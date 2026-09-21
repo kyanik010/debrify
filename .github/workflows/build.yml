@@ -104,9 +104,11 @@ jobs:
         java-version: '21'
 
     - name: Decode keystore
+      if: github.event_name != 'push'
       run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
 
     - name: Create key.properties
+      if: github.event_name != 'push'
       run: |
         cat > android/key.properties << EOF
         storePassword=${{ secrets.KEYSTORE_PASSWORD }}
