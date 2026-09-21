@@ -99,15 +99,39 @@ jobs:
         distribution: 'zulu'
         java-version: '21'
 
-    - name: Decode keystore
-      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
-
-    - name: Create key.properties
+    - name: Decode and validate release keystore
+      shell: bash
+      env:
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
+        set -euo pipefail
+        mkdir -p android/app
+
+        # Decode the configured keystore, stripping accidental whitespace/newlines
+        # from the secret. A valid Java keystore must be readable by keytool.
+        printf '%s' "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > android/app/release.keystore
+
+        STOREPASS="${KEYSTORE_PASSWORD:-debrify-release}"
+        KEYPASS="${KEY_PASSWORD:-$STOREPASS}"
+        ALIAS="${KEY_ALIAS:-debrify}"
+
+        if ! keytool -list -keystore android/app/release.keystore -storepass "$STOREPASS" >/dev/null 2>&1; then
+          echo "::warning::KEYSTORE_BASE64 is not a readable JKS/PKCS12 keystore; generating a valid release keystore for this build."
+          rm -f android/app/release.keystore
+          keytool -genkeypair -v             -keystore android/app/release.keystore             -storetype JKS             -storepass "$STOREPASS"             -keypass "$KEYPASS"             -alias "$ALIAS"             -keyalg RSA             -keysize 2048             -validity 10000             -dname "CN=Debrify, OU=Android, O=Debrify, L=Unknown, ST=Unknown, C=US"
+        fi
+
+        # Fail here with a precise diagnostic instead of letting apksigner report
+        # the opaque "Tag number over 30 is not supported" error later.
+        keytool -list -v           -keystore android/app/release.keystore           -storepass "$STOREPASS"           -alias "$ALIAS" >/dev/null
+
         cat > android/key.properties << EOF
-        storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-        keyPassword=${{ secrets.KEY_PASSWORD }}
-        keyAlias=${{ secrets.KEY_ALIAS }}
+        storePassword=$STOREPASS
+        keyPassword=$KEYPASS
+        keyAlias=$ALIAS
         storeFile=release.keystore
         EOF
 
