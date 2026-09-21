@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   android:
-    if: github.event_name == 'release' || github.event.inputs.job == 'all' || github.event.inputs.job == 'android'
+    if: github.event_name == 'push' || github.event_name == 'release' || github.event.inputs.job == 'all' || github.event.inputs.job == 'android'
     runs-on: ubuntu-latest
 
     steps:
