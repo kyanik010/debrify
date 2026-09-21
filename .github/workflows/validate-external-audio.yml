@@ -40,9 +40,43 @@ jobs:
       - name: Verify APK exists
         run: test -s build/app/outputs/flutter-apk/app-debug.apk
 
+      - name: Validate APK package and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-debug.apk"
+          test -s "$APK"
+          file "$APK" | grep -E "Zip archive|Android package|Java archive"
+          unzip -t "$APK" >/dev/null
+          AAPT2="$(find "$ANDROID_HOME/build-tools" -name aapt2 -type f | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -x "$AAPT2"
+          test -x "$APKSIGNER"
+          "$AAPT2" dump badging "$APK" >/tmp/apk-badging.txt
+          grep -q "^package:" /tmp/apk-badging.txt
+          "$APKSIGNER" verify --verbose "$APK"
+          sha256sum "$APK"
+
+      - name: Prepare direct APK asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp build/app/outputs/flutter-apk/app-debug.apk debrify-external-audio-debug.apk
+          unzip -t debrify-external-audio-debug.apk >/dev/null
+
       - name: Upload validation APK
         uses: actions/upload-artifact@v4
         with:
           name: debrify-external-audio-validation
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: debrify-external-audio-debug.apk
           if-no-files-found: error
+
+      - name: Publish direct APK download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: external-audio-validation-${{ github.run_number }}
+          name: External Audio Validation ${{ github.run_number }}
+          prerelease: true
+          files: debrify-external-audio-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
