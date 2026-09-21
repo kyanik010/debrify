@@ -76,12 +76,22 @@ jobs:
       - name: Build release APK
         env:
           ORG_GRADLE_PROJECT_debrifyLocalDiagnostics: "false"
-        run: flutter build apk --release --dart-define=DEBRIFY_LOCAL_VALIDATION=false
+        run: flutter build apk --release --target-platform android-arm64 --dart-define=DEBRIFY_LOCAL_VALIDATION=false
 
       - name: Verify APK is non-debuggable
         run: |
           debuggable=$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest debuggable build/app/outputs/flutter-apk/app-release.apk)
           test "$debuggable" = "false"
+
+      - name: Verify APK structure, alignment, and signature
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          unzip -t "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 4 -v 4 "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest min-sdk "$APK"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest target-sdk "$APK"
 
       - name: Verify packaged Android subtitle decoders
         run: dev/scripts/verify_android_subtitle_decoders.sh build/app/outputs/flutter-apk/app-release.apk
