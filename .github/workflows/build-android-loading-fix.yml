@@ -52,18 +52,27 @@ jobs:
           distribution: zulu
           java-version: "21"
 
-      - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+      - name: Create temporary release signing key
+        run: |
+          rm -f android/app/release.keystore
+          keytool -genkeypair -v \
+            -keystore android/app/release.keystore \
+            -storepass debrifytest \
+            -keypass debrifytest \
+            -alias debrify \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 3650 \
+            -dname "CN=Debrify Test, OU=Android, O=Debrify, L=Unknown, ST=Unknown, C=US"
 
       - name: Create key.properties
         run: |
           cat > android/key.properties << EOF
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
+          storePassword=debrifytest
+          keyPassword=debrifytest
+          keyAlias=debrify
           storeFile=release.keystore
           EOF
-
       - name: Build release APK
         env:
           ORG_GRADLE_PROJECT_debrifyLocalDiagnostics: "false"
