@@ -711,7 +711,13 @@ class XtreamCodesService {
 
   /// Probe which live URL form this panel serves, in order of preference:
   /// standard /live/ raw TS, standard /live/ HLS (TS-off panels), then the
-  /// two legacy un-prefixed forms. First 2xx wins.
+  /// two legacy un-prefixed forms.
+  ///
+  /// IMPORTANT: HTTP 200 alone is not enough. Some Xtream panels return a
+  /// 200 HTML/JSON error page for a dead stream URL. Treating that as a
+  /// successful probe can poison the cached URL dialect and leave MediaKit
+  /// waiting indefinitely. The probe therefore requires either a plausible
+  /// playback Content-Type or a recognizable first payload chunk.
   Future<_LiveUrlForm> _detectLiveUrlForm(
     String serverUrl,
     String encodedUser,
@@ -750,14 +756,14 @@ class XtreamCodesService {
     return _LiveUrlForm.standardTs;
   }
 
-  /// Fetch only the status code of a URL without downloading the body: some
-  /// panels answer stream URLs with the live stream itself, which a plain
-  /// http.get would buffer without bound.
+  /// Probe a live URL without buffering the stream. Status alone is not
+  /// sufficient because some panels return HTTP 200 with an HTML/JSON error
+  /// body for an unavailable stream.
   ///
-  /// Probes with the PLAYBACK User-Agent, not the API one: the probe's whole
-  /// job is predicting what the players will get, and a panel that blocks
-  /// unknown UAs on stream URLs would otherwise 4xx every form and leave the
-  /// verdict wrong for a URL shape that plays fine.
+  /// Returns the HTTP status when the response looks like a real media
+  /// response, and null when the URL is reachable but clearly returns a
+  /// non-media payload. Network/timeout failures also return null so the
+  /// caller does not cache an uncertain dialect.
   Future<int?> _probeStatusCode(String url) async {
     final client = http.Client();
     try {
@@ -765,10 +771,45 @@ class XtreamCodesService {
       request.headers['User-Agent'] = kIptvDefaultUserAgent;
       final response = await client
           .send(request)
-          .timeout(const Duration(seconds: 10));
-      // Cancel the body stream immediately; only the status matters.
-      await response.stream.listen((_) {}).cancel();
-      return response.statusCode;
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        await response.stream.drain();
+        return response.statusCode;
+      }
+
+      final contentType =
+          response.headers['content-type']?.toLowerCase() ?? '';
+      final declaredMedia = contentType.contains('video/') ||
+          contentType.contains('audio/') ||
+          contentType.contains('mpegurl') ||
+          contentType.contains('vnd.apple.mpegurl') ||
+          contentType.contains('octet-stream');
+
+      // Read only a tiny prefix. This is enough to recognize MPEG-TS (0x47)
+      // and HLS (#EXTM3U), while never buffering an actual live stream.
+      final prefix = <int>[];
+      await for (final chunk in response.stream.timeout(
+        const Duration(seconds: 5),
+      )) {
+        prefix.addAll(chunk);
+        if (prefix.length >= 512) break;
+      }
+
+      final textPrefix = latin1.decode(prefix, allowInvalid: true).trimLeft();
+      final looksLikeHls = textPrefix.startsWith('#EXTM3U');
+      final looksLikeMpegTs =
+          prefix.isNotEmpty && prefix.first == 0x47;
+
+      if (declaredMedia || looksLikeHls || looksLikeMpegTs) {
+        return response.statusCode;
+      }
+
+      debugPrint(
+        'XtreamCodesService: Probe rejected non-media response '
+        '(content-type=$contentType)',
+      );
+      return null;
     } catch (error) {
       debugPrint('XtreamCodesService: Probe failed (${error.runtimeType})');
       return null;
