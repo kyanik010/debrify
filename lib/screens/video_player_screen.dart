@@ -2720,7 +2720,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final clamped = milliseconds.clamp(-15000, 15000).toInt();
     _iptvExternalAudioSyncMs = clamped;
     try {
-      await _player.setProperty('audio-delay', (clamped / 1000).toString());
+      final platform = _player.platform;
+      if (platform is mk.NativePlayer) {
+        await platform.setProperty('audio-delay', (clamped / 1000).toString());
+      }
     } catch (e) {
       debugPrint('IPTV External Audio: failed to set audio-delay: $e');
     }
@@ -2744,7 +2747,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     }
     try {
-      await _player.setProperty('audio-delay', '0');
+      final platform = _player.platform;
+      if (platform is mk.NativePlayer) {
+        await platform.setProperty('audio-delay', '0');
+      }
     } catch (_) {}
     if (mounted) setState(() {});
   }
