@@ -8188,15 +8188,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           channel.url,
           isLive: channel.isLive,
         );
-        final media = mk.Media(
-          channel.url,
-          httpHeaders: channel.playbackHeaders,
-        );
-        // The outgoing stream is torn down (pause above); everything mpv
-        // reports from here is this channel's, including a fast failure that
-        // lands while open() is still awaiting.
+        // Live Xtream/M3U streams can return HTTP 200 and then stall
+        // without emitting an mpv error. Do not leave the UI in an endless
+        // Loading state: use the same bounded startup verifier used by the
+        // source ladder. Non-live content keeps the existing open path.
         _iptvErrorsMuted = false;
-        await _openMedia(media, play: true, liveStream: channel.isLive);
+        if (channel.isLive) {
+          final ok = await _tryOpenLiveStream(
+            channel.url,
+            httpHeaders: channel.playbackHeaders,
+          );
+          if (!ok) {
+            debugPrint(
+              'Player: IPTV live channel did not become playable within '
+              'the startup timeout: ' + channel.name,
+            );
+          }
+        } else {
+          final media = mk.Media(
+            channel.url,
+            httpHeaders: channel.playbackHeaders,
+          );
+          await _openMedia(media, play: true, liveStream: false);
+        }
       } catch (e) {
         debugPrint('Player: IPTV channel switch failed: $e');
       }
