@@ -8027,6 +8027,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // intent could take the newer ticket, hijacking playback back to the
     // channel the user just left.
     final ticket = ++_iptvSwitchTicket;
+    // Opening a new IPTV video discards mpv's external tracks. Reset the
+    // commentary source here so the Audio UI can never show a stale selection.
+    if (_iptvExternalAudioChannel != null) {
+      await _removeIptvExternalAudioSource();
+    }
     // This switch owns the error gate now (a superseded ladder's state doesn't
     // survive). Muted until the new media is opened below; the burst debounce
     // resets too, so this channel can report its own failure.
