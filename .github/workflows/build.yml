@@ -43,8 +43,9 @@ jobs:
         import json, os
         from pathlib import Path
         token = os.environ.get("TMDB_READ_ACCESS_TOKEN", "").strip()
-        if not token:
-            raise SystemExit("Missing repository secret: TMDB_READ_ACCESS_TOKEN")
+        # The external-audio validation build does not require TMDB at runtime.
+        # Keep release APK builds runnable even when this optional repository
+        # secret is not configured.
         config = Path(os.environ["RUNNER_TEMP"]) / "debrify-build-config.json"
         config.write_text(json.dumps({"TMDB_READ_ACCESS_TOKEN": token}), encoding="utf-8")
 
