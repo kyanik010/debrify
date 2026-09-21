@@ -61,7 +61,8 @@ jobs:
         flutter-version: '3.44.8'
         channel: 'stable'
 
-    - name: Cache dependencies
+    - name: Cache dependencies and MediaKit native libraries
+      id: cache
       uses: actions/cache@v4
       with:
         path: |
@@ -69,14 +70,16 @@ jobs:
           .dart_tool
           ~/.gradle/caches
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-deps-${{ hashFiles('**/pubspec.lock', '**/*.gradle*') }}
+          packages/media_kit_libs_android_video_patched/android/libs
+        key: ${{ runner.os }}-debrify-android-${{ hashFiles('**/pubspec.lock', '**/*.gradle*', 'dev/scripts/build_android_media_kit_libraries.sh') }}
         restore-keys: |
-          ${{ runner.os }}-deps-
+          ${{ runner.os }}-debrify-android-
 
     - name: Get dependencies
       run: flutter pub get
 
     - name: Install Android native build dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update
         sudo apt-get install -y autoconf automake libtool ninja-build nasm pkg-config python3-pip python3-setuptools unzip wget zip
@@ -84,25 +87,34 @@ jobs:
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
     - name: Select Java 17 for pinned MediaKit native build
+      if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
 
     - name: Build PGS-capable MediaKit Android libraries
+      if: steps.cache.outputs.cache-hit != 'true'
       run: dev/scripts/build_android_media_kit_libraries.sh packages/media_kit_libs_android_video_patched/android/libs
 
     - name: Restore Java 21 for Debrify Android build
+      uses: actions/setup-java@v4
+      if: steps.cache.outputs.cache-hit != 'true'
+      with:
+        distribution: 'zulu'
+        java-version: '21'
+
+    - name: Restore Java 21 for cached MediaKit build
+      if: steps.cache.outputs.cache-hit == 'true'
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
         java-version: '21'
 
-    - name: Decode keystore
-      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
-
-    - name: Create key.properties
+    - name: Prepare signing for release builds
+      if: github.event_name != 'push' || github.ref_name != 'debrify-lite-android'
       run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
         cat > android/key.properties << EOF
         storePassword=${{ secrets.KEYSTORE_PASSWORD }}
         keyPassword=${{ secrets.KEY_PASSWORD }}
@@ -110,22 +122,39 @@ jobs:
         storeFile=release.keystore
         EOF
 
-    - name: Build APK
+    - name: Build Lite APK
+      if: github.event_name == 'push' && github.ref_name == 'debrify-lite-android'
+      env:
+        ORG_GRADLE_PROJECT_debrifyLocalDiagnostics: "false"
+      run: flutter build apk --debug --dart-define=DEBRIFY_LOCAL_VALIDATION=false --dart-define-from-file="${{ runner.temp }}/debrify-build-config.json"
+
+    - name: Build Release APK
+      if: github.event_name != 'push' || github.ref_name != 'debrify-lite-android'
       env:
         ORG_GRADLE_PROJECT_debrifyLocalDiagnostics: "false"
       run: flutter build apk --release --dart-define=DEBRIFY_LOCAL_VALIDATION=false --dart-define-from-file="${{ runner.temp }}/debrify-build-config.json"
 
     - name: Reject debuggable release APK
+      if: github.event_name != 'push' || github.ref_name != 'debrify-lite-android'
       shell: bash
       run: |
         debuggable=$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest debuggable build/app/outputs/flutter-apk/app-release.apk)
         test "$debuggable" = "false"
 
     - name: Verify packaged Android subtitle decoders
+      if: github.event_name != 'push' || github.ref_name != 'debrify-lite-android'
       run: dev/scripts/verify_android_subtitle_decoders.sh build/app/outputs/flutter-apk/app-release.apk
 
+    - name: Upload Lite debug APK
+      if: github.event_name == 'push' && github.ref_name == 'debrify-lite-android'
+      uses: actions/upload-artifact@v4
+      with:
+        name: debrify-lite-android-debug
+        path: build/app/outputs/flutter-apk/app-debug.apk
+        if-no-files-found: error
+
     - name: Upload APK as artifact (feature branch)
-      if: github.event_name == 'push'
+      if: github.event_name == 'push' && github.ref_name != 'debrify-lite-android'
       uses: actions/upload-artifact@v4
       with:
         name: debrify-lite-android
