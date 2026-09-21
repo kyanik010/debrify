@@ -615,6 +615,12 @@ class TracksSheet {
     required void Function(String) onAudioChanged,
     bool? audioPassthrough,
     Future<void> Function(bool)? onAudioPassthroughChanged,
+    List<IptvChannel>? externalAudioChannels,
+    IptvChannel? selectedExternalAudioChannel,
+    int externalAudioSyncMs = 0,
+    Future<void> Function(IptvChannel channel)? onExternalAudioSelected,
+    Future<void> Function()? onExternalAudioRemoved,
+    Future<void> Function(int milliseconds)? onExternalAudioSyncChanged,
     required List<mk.SubtitleTrack> embeddedSubs,
     required List<AddonSubtitleSlot>? addonSlots,
     required bool slotsPending,
@@ -649,6 +655,12 @@ class TracksSheet {
           onAudioChanged: onAudioChanged,
           passthrough: audioPassthrough,
           onPassthroughChanged: onAudioPassthroughChanged,
+          externalAudioChannels: externalAudioChannels,
+          selectedExternalAudioChannel: selectedExternalAudioChannel,
+          externalAudioSyncMs: externalAudioSyncMs,
+          onExternalAudioSelected: onExternalAudioSelected,
+          onExternalAudioRemoved: onExternalAudioRemoved,
+          onExternalAudioSyncChanged: onExternalAudioSyncChanged,
         );
       case 1:
         return _SubtitlesTab(
