@@ -4528,10 +4528,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     bool liveStream = false,
     EpisodePlaybackRequest? request,
     bool Function()? beforeOpen,
-    int _liveOpenAttempt = 0,
+    int liveOpenAttempt = 0,
   }) async {
     if (request?.isCurrent == false) return;
-    if (liveStream && _liveOpenAttempt > 1) {
+    if (liveStream && liveOpenAttempt > 1) {
       throw StateError('IPTV live open exhausted its recovery attempts');
     }
     _resumeVerifyEpoch++;
@@ -4603,9 +4603,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         'Player: IPTV live open timed out after ' +
         openTimeout.inSeconds.toString() +
         's; recreating native player (attempt=' +
-        (_liveOpenAttempt + 1).toString() + ')',
+        (liveOpenAttempt + 1).toString() + ')',
       );
-      if (_liveOpenAttempt >= 1) rethrow;
+      if (liveOpenAttempt >= 1) rethrow;
       await _recreatePlayerAfterLiveOpenTimeout();
       if (_screenDisposed || !mounted) return;
       return _openMedia(
@@ -4615,7 +4615,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         liveStream: true,
         request: request,
         beforeOpen: beforeOpen,
-        _liveOpenAttempt: _liveOpenAttempt + 1,
+        liveOpenAttempt: liveOpenAttempt + 1,
       );
     }
   }
