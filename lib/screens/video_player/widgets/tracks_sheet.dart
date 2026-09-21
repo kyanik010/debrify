@@ -762,6 +762,10 @@ class _AudioTab extends StatelessWidget {
               title: labels[i],
               isSelected: audios[i].id == selectedAudio,
               onTap: () async {
+                if (selectedExternalAudioChannel != null &&
+                    onExternalAudioRemoved != null) {
+                  await onExternalAudioRemoved!();
+                }
                 onAudioChanged(audios[i].id);
                 await player.setAudioTrack(audios[i]);
                 await onTrackChanged(audios[i].id, selectedSub);
