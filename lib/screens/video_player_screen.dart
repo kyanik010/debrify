@@ -4503,6 +4503,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
   }
 
+  /// A native libmpv open can remain pending even after a Dart Future timeout.
+  /// For live IPTV, destroy the stalled native instance before retrying so the
+  /// second open can never overlap the first one.
+  Future<void> _recreatePlayerAfterLiveOpenTimeout() async {
+    if (_screenDisposed || !mounted) return;
+    final oldPlayer = _player;
+    await _cancelPlayerInstanceSubscriptions();
+    await _disposeSubtitleAutoSync();
+    try { await oldPlayer.stop(); } catch (_) {}
+    try { await oldPlayer.dispose(); } catch (e) {
+      debugPrint('Player: timed-out IPTV player dispose failed: $e');
+    }
+    if (_screenDisposed || !mounted) return;
+    _createPlayerInstance(_androidVideoRendererMode);
+    await _configurePlayerAudio(_player);
+    _installSubtitleAutoSyncForPlayer(_player);
+  }
+
   Future<void> _openMedia(
     mk.Media media, {
     required bool play,
@@ -4510,28 +4528,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     bool liveStream = false,
     EpisodePlaybackRequest? request,
     bool Function()? beforeOpen,
+    int _liveOpenAttempt = 0,
   }) async {
     if (request?.isCurrent == false) return;
-    // EVERY content open invalidates the outgoing media's resume protection —
-    // the one choke point all switch paths share, so no path (Stremio TV
-    // channel, Magic TV next, zap, source switch, startup ladder) can leave a
-    // stale guard suppressing the new media's saves or a live verifier
-    // re-seeking the old target against it. Ordering is safe by construction:
-    // every outgoing checkpoint save runs BEFORE its new open, and every path
-    // that re-protects (_seekForResume) re-arms AFTER it.
+    if (liveStream && _liveOpenAttempt > 1) {
+      throw StateError('IPTV live open exhausted its recovery attempts');
+    }
     _resumeVerifyEpoch++;
     _resumeWriteGuard.clear();
     _activeOpenedMedia = media;
     _activeMediaShouldPlay = desiredPlay ?? play;
     _activeMediaUserPaused = false;
     _beginMediaGeneration();
-    // Live IPTV (Phase 2, Layer 1): ffmpeg-level reconnect. mpv's default
-    // reconnect covers only seekable inputs — a live/streamed input NEVER
-    // reconnects without reconnect_streamed. Repairs happen inside the
-    // protocol layer while the demuxer cache plays through, so the common
-    // connection drop is invisible. Cleared for non-live opens: the
-    // property is player-global and reconnect-on-error semantics are wrong
-    // for finite files (mpv's own defaults handle those).
+
     final platform = _player.platform;
     if (platform is mk.NativePlayer) {
       final tuningGeneration = _decoderProbeGeneration;
@@ -4539,8 +4548,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       try {
         tuning = _networkTuning ??= await NetworkTuning.load();
       } catch (e) {
-        // Profile storage refusing a read must degrade to "no tuning", never
-        // block playback — this line is on the Standard path too.
         debugPrint('Player: network tuning load failed: $e');
         tuning = _networkTuning = const NetworkTuning(
           patience: NetworkTuning.standard,
@@ -4550,46 +4557,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       try {
         await platform.setProperty(
           'stream-lavf-o',
-          // reconnect_on_http_error=5xx covers server-side hiccups at the
-          // protocol layer. Deliberately narrow: NOT auth-class 4xx (same
-          // answer every time — must surface), and not 429 (a comma-list
-          // value can't ride mpv's key-value list safely, and escalating a
-          // rate limit to the slower ladder is politer to the origin).
-          //
-          // VOD opens carry the user's Network & Buffering patience preset
-          // ('' at Standard — today's exact behavior).
           liveStream
-              ? 'reconnect=1,reconnect_streamed=1,'
-                    'reconnect_on_network_error=1,'
-                    'reconnect_on_http_error=5xx,'
-                    'reconnect_delay_max=5'
+              ? 'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,'
+                    'reconnect_on_http_error=5xx,reconnect_delay_max=5'
               : tuning.vodLavfOptions,
         );
       } catch (e) {
         debugPrint('Player: stream-lavf-o set failed: $e');
       }
       await _applyNetworkTuning(
-        platform,
-        tuning,
-        liveStream: liveStream,
-        generation: tuningGeneration,
+        platform, tuning, liveStream: liveStream, generation: tuningGeneration,
       );
     }
     final remedy = _tvosDecodeRemedy;
     if (remedy != null) {
-      // AWAITED before open: remedy properties are ordinary runtime options
-      // on a reused native player — this is the boundary that restores them
-      // (and pre-applies the session hint) so a previous file's ladder can
-      // never leak into this one.
       final generation = _decoderProbeGeneration;
       await remedy.onNewMedia(generation);
-      // A rapid zap can start a newer open while the restore ran; the newer
-      // call owns the player now.
       if (_screenDisposed || generation != _decoderProbeGeneration) return;
     }
-    // `sub-visibility` is player-global. Reset it before a reused player opens
-    // new media so a previous bitmap track cannot make auto-selected text draw
-    // both natively and in Flutter. Restored bitmap selections re-enable it.
     if (platform is mk.NativePlayer) {
       try {
         await platform.setProperty(
@@ -4600,13 +4585,39 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         debugPrint('Player: subtitle visibility reset failed: $error');
       }
     }
-    // Final synchronous ownership check after all asynchronous setup.
     if (beforeOpen != null && !beforeOpen()) return;
-    if (request != null) {
-      await request.commit(() => _player.open(media, play: play));
-      return;
+
+    Future<void> doOpen() {
+      if (request != null) {
+        return request.commit(() => _player.open(media, play: play));
+      }
+      return _player.open(media, play: play);
     }
-    return _player.open(media, play: play);
+    if (!liveStream) return doOpen();
+
+    const openTimeout = Duration(seconds: 15);
+    try {
+      await doOpen().timeout(openTimeout);
+    } on TimeoutException {
+      debugPrint(
+        'Player: IPTV live open timed out after ' +
+        openTimeout.inSeconds.toString() +
+        's; recreating native player (attempt=' +
+        (_liveOpenAttempt + 1).toString() + ')',
+      );
+      if (_liveOpenAttempt >= 1) rethrow;
+      await _recreatePlayerAfterLiveOpenTimeout();
+      if (_screenDisposed || !mounted) return;
+      return _openMedia(
+        media,
+        play: play,
+        desiredPlay: desiredPlay,
+        liveStream: true,
+        request: request,
+        beforeOpen: beforeOpen,
+        _liveOpenAttempt: _liveOpenAttempt + 1,
+      );
+    }
   }
 
   void _releasePlayerDiagnostic(String fields) {
