@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../models/stremio_subtitle.dart';
+import '../../../models/iptv_playlist.dart';
 import '../../../services/stremio_subtitle_service.dart';
 import '../../../services/subtitle_font_service.dart';
 import '../../../utils/platform_util.dart';
@@ -64,6 +65,14 @@ class PlayerMenuPanel extends StatefulWidget {
   /// Android bitstream passthrough — null hides the row (other platforms).
   final bool? audioPassthrough;
   final Future<void> Function(bool enabled)? onAudioPassthroughChanged;
+
+  // ── IPTV external audio ──
+  final List<IptvChannel>? externalAudioChannels;
+  final IptvChannel? selectedExternalAudioChannel;
+  final int externalAudioSyncMs;
+  final Future<void> Function(IptvChannel channel)? onExternalAudioSelected;
+  final Future<void> Function()? onExternalAudioRemoved;
+  final Future<void> Function(int milliseconds)? onExternalAudioSyncChanged;
 
   // ── Subtitles ──
   final List<PlayerMenuTrackOption> embeddedSubtitles;
@@ -132,6 +141,12 @@ class PlayerMenuPanel extends StatefulWidget {
     required this.onAudioSelected,
     this.audioPassthrough,
     this.onAudioPassthroughChanged,
+    this.externalAudioChannels,
+    this.selectedExternalAudioChannel,
+    this.externalAudioSyncMs = 0,
+    this.onExternalAudioSelected,
+    this.onExternalAudioRemoved,
+    this.onExternalAudioSyncChanged,
     required this.embeddedSubtitles,
     required this.selectedSubtitleId,
     required this.onSubtitlesOff,
@@ -768,8 +783,7 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
         _MenuRow(
           label: 'Passthrough (AC3 · EAC3 · DTS)',
           sublabel:
-              'Bitstream to your receiver. If you hear silence, '
-              'turn this off.',
+              'Bitstream to your receiver. If you hear silence, turn this off.',
           selected: _passthrough == true,
           onTap: () async {
             final next = !(_passthrough ?? false);
@@ -780,9 +794,7 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
       );
     }
     if (widget.audioTracks.isEmpty) {
-      rows.add(
-        const _MenuRow(label: 'No audio tracks in this file', note: true),
-      );
+      rows.add(const _MenuRow(label: 'No audio tracks in this file', note: true));
     } else {
       for (final t in widget.audioTracks) {
         rows.add(
@@ -794,7 +806,150 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
         );
       }
     }
+
+    final external = widget.externalAudioChannels ?? const <IptvChannel>[];
+    if (external.isNotEmpty && widget.onExternalAudioSelected != null) {
+      rows.add(const _MenuRow(label: 'External Audio', header: true));
+      rows.add(
+        _MenuRow(
+          label: widget.selectedExternalAudioChannel?.name ?? 'Select Audio Source',
+          sublabel: widget.selectedExternalAudioChannel == null
+              ? 'Use another IPTV channel for commentary'
+              : 'External IPTV audio source',
+          selected: widget.selectedExternalAudioChannel != null,
+          onTap: _openExternalAudioPicker,
+        ),
+      );
+      if (widget.selectedExternalAudioChannel != null) {
+        rows.add(
+          _MenuRow(
+            label: 'Audio Sync',
+            sublabel: _externalSyncLabel(widget.externalAudioSyncMs),
+            onTap: () async {},
+          ),
+        );
+        rows.add(_MenuRow(
+          label: '−0.1s',
+          onTap: () async => widget.onExternalAudioSyncChanged?.call(
+            widget.externalAudioSyncMs - 100,
+          ),
+        ));
+        rows.add(_MenuRow(
+          label: '+0.1s',
+          onTap: () async => widget.onExternalAudioSyncChanged?.call(
+            widget.externalAudioSyncMs + 100,
+          ),
+        ));
+        rows.add(_MenuRow(
+          label: 'Reset Audio Sync',
+          destructiveDim: true,
+          onTap: () async => widget.onExternalAudioSyncChanged?.call(0),
+        ));
+        if (widget.onExternalAudioRemoved != null) {
+          rows.add(_MenuRow(
+            label: 'Remove External Audio',
+            destructiveDim: true,
+            onTap: () async => widget.onExternalAudioRemoved!(),
+          ));
+        }
+      }
+    }
     return rows;
+  }
+
+  String _externalSyncLabel(int ms) {
+    if (ms == 0) return 'In sync';
+    final seconds = ms.abs() / 1000;
+    final value = seconds % 1 == 0
+        ? seconds.toStringAsFixed(0)
+        : seconds.toStringAsFixed(1);
+    return ms > 0 ? '+$' + '{value}s' : '-$' + '{value}s';
+  }
+
+  Future<void> _openExternalAudioPicker() async {
+    final channels = widget.externalAudioChannels ?? const <IptvChannel>[];
+    final callback = widget.onExternalAudioSelected;
+    if (channels.isEmpty || callback == null || !mounted) return;
+    final chosen = await showModalBottomSheet<IptvChannel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF101014),
+      builder: (context) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final q = query.trim().toLowerCase();
+            final filtered = channels
+                .where((c) => q.isEmpty || c.searchKey.contains(q))
+                .take(200)
+                .toList(growable: false);
+            return SafeArea(
+              child: SizedBox(
+                height: MediaQuery.sizeOf(context).height * 0.82,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'SELECT AUDIO SOURCE',
+                              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        autofocus: true,
+                        onChanged: (v) => setState(() => query = v),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Search audio channel',
+                          hintStyle: const TextStyle(color: Colors.white38),
+                          prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.06),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 6),
+                        itemBuilder: (_, i) {
+                          final channel = filtered[i];
+                          return _MenuRowTile(
+                            label: channel.name,
+                            subtitle: channel.group,
+                            selected: widget.selectedExternalAudioChannel?.url == channel.url,
+                            onTap: () => Navigator.pop(context, channel),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    if (chosen != null && mounted) await callback(chosen);
   }
 
   List<_MenuRow> _subtitleRows() {
@@ -1809,6 +1964,60 @@ class _ValueRow extends StatelessWidget {
                 const Icon(Icons.refresh_rounded, size: 15, color: _statusRed),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuRowTile extends StatelessWidget {
+  final String label;
+  final String? subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  const _MenuRowTile({
+    required this.label,
+    this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: selected
+              ? Colors.white.withValues(alpha: 0.12)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(
+            color: selected
+                ? Colors.white.withValues(alpha: 0.30)
+                : Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  if (subtitle != null && subtitle!.trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                    ),
+                ],
+              ),
+            ),
+            if (selected) const Icon(Icons.check_rounded, color: Colors.white, size: 17),
+          ],
         ),
       ),
     );
