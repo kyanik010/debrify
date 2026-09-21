@@ -665,6 +665,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _showIptvChannelSheet = false;
   int _currentIptvIndex = 0;
 
+  // Independent Xtream audio source attached to the same mpv session.
+  IptvChannel? _iptvExternalAudioChannel;
+  String? _iptvExternalAudioTrackId;
+  int _iptvExternalAudioSyncMs = 0;
+  int _iptvExternalAudioGeneration = 0;
+
   /// Phase 0 of the IPTV resilience plan: per-tune debugPrint diagnostics,
   /// same log grammar as the native player's IptvTuneDiagnostics.kt. Inert
   /// for non-IPTV playback (nothing calls onTuneStart there).
@@ -2658,6 +2664,99 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     } catch (e) {
       debugPrint('VideoPlayer: failed to set external audio track: $e');
     }
+  }
+
+  /// Attach a second IPTV channel as external audio without creating a
+  /// second player. The catalog already resolved the channel URL.
+  Future<void> _setIptvExternalAudioSource(IptvChannel channel) async {
+    final generation = ++_iptvExternalAudioGeneration;
+    try {
+      final oldId = _iptvExternalAudioTrackId;
+      final before = _player.state.tracks.audio.map((t) => t.id).toSet();
+      if (oldId != null && _player.platform is mk.NativePlayer) {
+        try {
+          await (_player.platform as mk.NativePlayer).command([
+            'audio-remove',
+            oldId,
+          ]);
+        } catch (_) {}
+      }
+
+      await _player.setAudioTrack(mk.AudioTrack.uri(channel.url));
+
+      String? addedId;
+      for (var i = 0; i < 20; i++) {
+        if (!mounted || generation != _iptvExternalAudioGeneration) return;
+        await Future.delayed(const Duration(milliseconds: 50));
+        for (final track in _player.state.tracks.audio) {
+          if (!before.contains(track.id) &&
+              track.id.toLowerCase() != 'no') {
+            addedId = track.id;
+            break;
+          }
+        }
+        if (addedId != null) break;
+      }
+
+      if (!mounted || generation != _iptvExternalAudioGeneration) return;
+      _iptvExternalAudioChannel = channel;
+      _iptvExternalAudioTrackId = addedId;
+      _iptvExternalAudioSyncMs = 0;
+      await _setIptvExternalAudioDelay(0);
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('IPTV External Audio: failed to attach ${channel.name}: $e');
+      if (mounted && generation == _iptvExternalAudioGeneration) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load the external audio source'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _setIptvExternalAudioDelay(int milliseconds) async {
+    final clamped = milliseconds.clamp(-15000, 15000).toInt();
+    _iptvExternalAudioSyncMs = clamped;
+    try {
+      final platform = _player.platform;
+      if (platform is mk.NativePlayer) {
+        await platform.command([
+          'set',
+          'audio-delay',
+          (clamped / 1000).toString(),
+        ]);
+      }
+    } catch (e) {
+      debugPrint('IPTV External Audio: failed to set audio-delay: $e');
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _removeIptvExternalAudioSource() async {
+    ++_iptvExternalAudioGeneration;
+    final id = _iptvExternalAudioTrackId;
+    _iptvExternalAudioTrackId = null;
+    _iptvExternalAudioChannel = null;
+    _iptvExternalAudioSyncMs = 0;
+    if (id != null && _player.platform is mk.NativePlayer) {
+      try {
+        await (_player.platform as mk.NativePlayer).command([
+          'audio-remove',
+          id,
+        ]);
+      } catch (e) {
+        debugPrint('IPTV External Audio: failed to remove track $id: $e');
+      }
+    }
+    try {
+      final platform = _player.platform;
+      if (platform is mk.NativePlayer) {
+        await platform.command(['set', 'audio-delay', '0']);
+      }
+    } catch (_) {}
+    if (mounted) setState(() {});
   }
 
   /// Put Android audio on an effects-capable output and announce the session,
@@ -7949,6 +8048,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // intent could take the newer ticket, hijacking playback back to the
     // channel the user just left.
     final ticket = ++_iptvSwitchTicket;
+    // Opening a new IPTV video discards mpv's external tracks. Reset the
+    // commentary source here so the Audio UI can never show a stale selection.
+    if (_iptvExternalAudioChannel != null) {
+      await _removeIptvExternalAudioSource();
+    }
     // This switch owns the error gate now (a superseded ladder's state doesn't
     // survive). Muted until the new media is opened below; the burst debounce
     // resets too, so this channel can report its own failure.
@@ -16309,6 +16413,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       audioPassthrough: !kIsWeb && Platform.isAndroid
           ? _audioPassthroughEnabled
           : null,
+      externalAudioChannels: _effectiveIptvChannels
+          ?.where((channel) => channel.isLive && channel.url.isNotEmpty)
+          .toList(growable: false),
+      selectedExternalAudioChannel: _iptvExternalAudioChannel,
+      externalAudioSyncMs: _iptvExternalAudioSyncMs,
+      onExternalAudioSelected: _setIptvExternalAudioSource,
+      onExternalAudioRemoved: _removeIptvExternalAudioSource,
+      onExternalAudioSyncChanged: _setIptvExternalAudioDelay,
       onAudioPassthroughChanged: !kIsWeb && Platform.isAndroid
           ? _setAudioPassthroughLive
           : null,
