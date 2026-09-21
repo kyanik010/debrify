@@ -16714,6 +16714,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       onAudioPassthroughChanged: !kIsWeb && Platform.isAndroid
           ? _setAudioPassthroughLive
           : null,
+      externalAudioChannels: _effectiveIptvChannels
+          ?.where((channel) => channel.isLive && channel.url.isNotEmpty)
+          .toList(growable: false),
+      selectedExternalAudioChannel: _iptvExternalAudioChannel,
+      externalAudioSyncMs: _iptvExternalAudioSyncMs,
+      onExternalAudioSelected: _setIptvExternalAudioSource,
+      onExternalAudioRemoved: _removeIptvExternalAudioSource,
+      onExternalAudioSyncChanged: _setIptvExternalAudioDelay,
       embeddedSubtitles: [
         for (final (i, s) in embedded.indexed)
           PlayerMenuTrackOption(s.id, LanguageMapper.labelForTrack(s, i)),
