@@ -2717,7 +2717,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   Future<void> _setIptvExternalAudioDelay(int milliseconds) async {
-    final clamped = milliseconds.clamp(-15000, 15000);
+    final clamped = milliseconds.clamp(-15000, 15000).toInt();
     _iptvExternalAudioSyncMs = clamped;
     try {
       await _player.setProperty('audio-delay', (clamped / 1000).toString());
