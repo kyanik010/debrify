@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/iptv-external-audio-source
+      - debrify-lite-android
   release:
     types: [published]
   workflow_dispatch:
@@ -127,7 +128,7 @@ jobs:
       if: github.event_name == 'push'
       uses: actions/upload-artifact@v4
       with:
-        name: debrify-android-external-audio
+        name: debrify-lite-android
         path: build/app/outputs/flutter-apk/app-release.apk
         if-no-files-found: error
 
