@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'tv_tappable.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import '../../../models/stremio_subtitle.dart';
+import '../../../models/iptv_playlist.dart';
 import '../../../services/stremio_subtitle_service.dart';
 import '../../../services/subtitle_font_service.dart';
 import '../constants/color_constants.dart';
@@ -75,6 +76,12 @@ class TracksSheet {
     // caller owns properties + audio-chain reinit + persistence).
     bool? audioPassthrough,
     Future<void> Function(bool enabled)? onAudioPassthroughChanged,
+    List<IptvChannel>? externalAudioChannels,
+    IptvChannel? selectedExternalAudioChannel,
+    int externalAudioSyncMs = 0,
+    Future<void> Function(IptvChannel channel)? onExternalAudioSelected,
+    Future<void> Function()? onExternalAudioRemoved,
+    Future<void> Function(int milliseconds)? onExternalAudioSyncChanged,
   }) async {
     final tracks = player.state.tracks;
     final audios = tracks.audio
@@ -386,6 +393,12 @@ class TracksSheet {
                         onAudioChanged: (v) =>
                             setModalState(() => selectedAudio = v),
                         audioPassthrough: passthroughState,
+                        externalAudioChannels: externalAudioChannels,
+                        selectedExternalAudioChannel: selectedExternalAudioChannel,
+                        externalAudioSyncMs: externalAudioSyncMs,
+                        onExternalAudioSelected: onExternalAudioSelected,
+                        onExternalAudioRemoved: onExternalAudioRemoved,
+                        onExternalAudioSyncChanged: onExternalAudioSyncChanged,
                         onAudioPassthroughChanged:
                             onAudioPassthroughChanged == null
                             ? null
@@ -602,6 +615,12 @@ class TracksSheet {
     required void Function(String) onAudioChanged,
     bool? audioPassthrough,
     Future<void> Function(bool)? onAudioPassthroughChanged,
+    List<IptvChannel>? externalAudioChannels,
+    IptvChannel? selectedExternalAudioChannel,
+    int externalAudioSyncMs = 0,
+    Future<void> Function(IptvChannel channel)? onExternalAudioSelected,
+    Future<void> Function()? onExternalAudioRemoved,
+    Future<void> Function(int milliseconds)? onExternalAudioSyncChanged,
     required List<mk.SubtitleTrack> embeddedSubs,
     required List<AddonSubtitleSlot>? addonSlots,
     required bool slotsPending,
@@ -636,6 +655,12 @@ class TracksSheet {
           onAudioChanged: onAudioChanged,
           passthrough: audioPassthrough,
           onPassthroughChanged: onAudioPassthroughChanged,
+          externalAudioChannels: externalAudioChannels,
+          selectedExternalAudioChannel: selectedExternalAudioChannel,
+          externalAudioSyncMs: externalAudioSyncMs,
+          onExternalAudioSelected: onExternalAudioSelected,
+          onExternalAudioRemoved: onExternalAudioRemoved,
+          onExternalAudioSyncChanged: onExternalAudioSyncChanged,
         );
       case 1:
         return _SubtitlesTab(
@@ -686,10 +711,14 @@ class _AudioTab extends StatelessWidget {
   final String selectedSub;
   final Future<void> Function(String, String) onTrackChanged;
   final void Function(String) onAudioChanged;
-
-  /// Android bitstream passthrough — null hides the row (other platforms).
   final bool? passthrough;
   final Future<void> Function(bool)? onPassthroughChanged;
+  final List<IptvChannel>? externalAudioChannels;
+  final IptvChannel? selectedExternalAudioChannel;
+  final int externalAudioSyncMs;
+  final Future<void> Function(IptvChannel)? onExternalAudioSelected;
+  final Future<void> Function()? onExternalAudioRemoved;
+  final Future<void> Function(int milliseconds)? onExternalAudioSyncChanged;
 
   const _AudioTab({
     super.key,
@@ -701,78 +730,271 @@ class _AudioTab extends StatelessWidget {
     required this.onAudioChanged,
     this.passthrough,
     this.onPassthroughChanged,
+    this.externalAudioChannels,
+    this.selectedExternalAudioChannel,
+    this.externalAudioSyncMs = 0,
+    this.onExternalAudioSelected,
+    this.onExternalAudioRemoved,
+    this.onExternalAudioSyncChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final toggle = passthrough == null || onPassthroughChanged == null
         ? null
-        : _PassthroughToggle(
-            value: passthrough!,
-            onChanged: onPassthroughChanged!,
-          );
+        : _PassthroughToggle(value: passthrough!, onChanged: onPassthroughChanged!);
+    final labels = LanguageMapper.audioTrackOptions<String>(audios, (_, label) => label);
 
-    if (audios.isEmpty) {
-      return Column(
-        children: [
-          if (toggle != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: toggle,
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      children: [
+        if (toggle != null) ...[toggle, const SizedBox(height: 16)],
+        const _AudioSectionHeader(
+          title: 'Internal Audio',
+          subtitle: 'Audio tracks included in the current video',
+        ),
+        const SizedBox(height: 8),
+        if (audios.isEmpty)
+          const _EmptyAudioTile()
+        else
+          for (var i = 0; i < audios.length; i++) ...[
+            _TrackTile(
+              title: labels[i],
+              isSelected: audios[i].id == selectedAudio,
+              onTap: () async {
+                onAudioChanged(audios[i].id);
+                await player.setAudioTrack(audios[i]);
+                await onTrackChanged(audios[i].id, selectedSub);
+              },
             ),
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.audiotrack_outlined,
-                    size: 48,
-                    color: Colors.white.withValues(alpha: 0.2),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No audio tracks available',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // The toggle rides the same scroll as the tracks (itemCount + 1) so a
-    // long track list doesn't pin it and shrink the list's viewport.
-    final extra = toggle != null ? 1 : 0;
-    final labels = LanguageMapper.audioTrackOptions<String>(
-      audios,
-      (_, label) => label,
+            if (i != audios.length - 1) const SizedBox(height: 8),
+          ],
+        const SizedBox(height: 20),
+        const _AudioSectionHeader(
+          title: 'External Audio',
+          subtitle: 'Use another IPTV channel for the commentary',
+        ),
+        const SizedBox(height: 8),
+        _ExternalAudioCard(
+          channels: externalAudioChannels ?? const [],
+          selected: selectedExternalAudioChannel,
+          syncMs: externalAudioSyncMs,
+          onSelected: onExternalAudioSelected,
+          onRemoved: onExternalAudioRemoved,
+          onSyncChanged: onExternalAudioSyncChanged,
+        ),
+      ],
     );
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: audios.length + extra,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        if (toggle != null && index == 0) return toggle;
-        final audio = audios[index - extra];
-        final isSelected = audio.id == selectedAudio;
-        final label = labels[index - extra];
+  }
+}
 
-        return _TrackTile(
-          title: label,
-          isSelected: isSelected,
-          onTap: () async {
-            onAudioChanged(audio.id);
-            await player.setAudioTrack(audio);
-            await onTrackChanged(audio.id, selectedSub);
+class _AudioSectionHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const _AudioSectionHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 3),
+      Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.48), fontSize: 11.5)),
+    ],
+  );
+}
+
+class _EmptyAudioTile extends StatelessWidget {
+  const _EmptyAudioTile();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.05),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: const Text('No audio tracks available', style: TextStyle(color: Colors.white54, fontSize: 13)),
+  );
+}
+
+class _ExternalAudioCard extends StatelessWidget {
+  final List<IptvChannel> channels;
+  final IptvChannel? selected;
+  final int syncMs;
+  final Future<void> Function(IptvChannel)? onSelected;
+  final Future<void> Function()? onRemoved;
+  final Future<void> Function(int milliseconds)? onSyncChanged;
+
+  const _ExternalAudioCard({
+    required this.channels,
+    required this.selected,
+    required this.syncMs,
+    required this.onSelected,
+    required this.onRemoved,
+    required this.onSyncChanged,
+  });
+
+  String _syncLabel() {
+    if (syncMs == 0) return '0.0s';
+    final seconds = syncMs.abs() / 1000;
+    final value = seconds % 1 == 0
+        ? seconds.toStringAsFixed(0)
+        : seconds.toStringAsFixed(1);
+    return syncMs > 0 ? '+${value}s' : '-${value}s';
+  }
+
+  Future<void> _pick(BuildContext context) async {
+    if (channels.isEmpty || onSelected == null) return;
+    final chosen = await showModalBottomSheet<IptvChannel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF101014),
+      builder: (context) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final q = query.trim().toLowerCase();
+            final filtered = channels
+                .where((c) => q.isEmpty || c.searchKey.contains(q))
+                .take(200)
+                .toList(growable: false);
+            return SafeArea(
+              child: SizedBox(
+                height: MediaQuery.sizeOf(context).height * 0.82,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'SELECT AUDIO SOURCE',
+                              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        autofocus: true,
+                        onChanged: (v) => setState(() => query = v),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Search',
+                          hintStyle: const TextStyle(color: Colors.white38),
+                          prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.06),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 6),
+                        itemBuilder: (_, i) {
+                          final channel = filtered[i];
+                          return _TrackTile(
+                            title: channel.name,
+                            subtitle: channel.group,
+                            isSelected: selected?.url == channel.url,
+                            onTap: () => Navigator.pop(context, channel),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
           },
         );
       },
+    );
+    if (chosen != null) await onSelected!(chosen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = selected != null;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.graphic_eq_rounded, color: active ? VideoPlayerColors.netflixRed : Colors.white54, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  active ? selected!.name : 'No external audio selected',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+              TextButton(
+                onPressed: channels.isEmpty ? null : () => _pick(context),
+                child: const Text('Select Audio Source'),
+              ),
+            ],
+          ),
+          if (active) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'AUDIO SYNC  ${_syncLabel()}',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12),
+                  ),
+                ),
+                IconButton(
+                  tooltip: '−0.1s',
+                  onPressed: onSyncChanged == null ? null : () => onSyncChanged!(syncMs - 100),
+                  icon: const Icon(Icons.remove_rounded, color: Colors.white70),
+                ),
+                IconButton(
+                  tooltip: '+0.1s',
+                  onPressed: onSyncChanged == null ? null : () => onSyncChanged!(syncMs + 100),
+                  icon: const Icon(Icons.add_rounded, color: Colors.white70),
+                ),
+                TextButton(
+                  onPressed: onSyncChanged == null ? null : () => onSyncChanged!(0),
+                  child: const Text('Reset'),
+                ),
+                TextButton(onPressed: onRemoved, child: const Text('Remove')),
+              ],
+            ),
+            Text(
+              syncMs == 0 ? 'IN SYNC' : 'Audio delay applied to external source',
+              style: TextStyle(
+                color: syncMs == 0 ? Colors.white54 : VideoPlayerColors.netflixRed,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
