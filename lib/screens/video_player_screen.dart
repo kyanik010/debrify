@@ -16395,7 +16395,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     if (!context.mounted) return;
 
-    if (kUnifiedPlayerMenuEnabled) {
+    // IPTV external-audio controls live in TracksSheet. The unified menu
+    // currently exposes embedded audio/subtitles but does not expose the
+    // second-IPTV-channel picker, so never route an IPTV session away from
+    // TracksSheet or the External Audio feature becomes unreachable.
+    final hasIptvExternalAudio =
+        _effectiveIptvChannels?.any(
+          (channel) => channel.isLive && channel.url.isNotEmpty,
+        ) ==
+        true;
+    if (kUnifiedPlayerMenuEnabled && !hasIptvExternalAudio) {
       _openPlayerMenuAt(
         PlayerMenuSection.subtitles,
         imdbId: effectiveImdbId,
