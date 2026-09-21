@@ -1,0 +1,48 @@
+name: Validate External Audio Android
+
+on:
+  push:
+    branches:
+      - debrify-external-audio-main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Static analysis
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Build Android debug APK
+        run: flutter build apk --debug --dart-define=DEBRIFY_LOCAL_VALIDATION=false
+
+      - name: Verify APK exists
+        run: test -s build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Upload validation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: debrify-external-audio-validation
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
