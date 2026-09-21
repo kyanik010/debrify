@@ -128,6 +128,14 @@ jobs:
     - name: Verify packaged Android subtitle decoders
       run: dev/scripts/verify_android_subtitle_decoders.sh build/app/outputs/flutter-apk/app-release.apk
 
+    - name: Upload APK as artifact (external audio branch)
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: debrify-external-audio-main
+        path: build/app/outputs/flutter-apk/app-release.apk
+        if-no-files-found: error
+
     - name: Rename APK (release)
       if: github.event_name == 'release'
       run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/debrify-${{ github.event.release.tag_name }}.apk
