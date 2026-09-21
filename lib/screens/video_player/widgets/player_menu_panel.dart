@@ -863,7 +863,7 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
     final value = seconds % 1 == 0
         ? seconds.toStringAsFixed(0)
         : seconds.toStringAsFixed(1);
-    return ms > 0 ? '+$' + '{value}s' : '-$' + '{value}s';
+    return ms > 0 ? '+' + value + 's' : '-' + value + 's';
   }
 
   Future<void> _openExternalAudioPicker() async {
