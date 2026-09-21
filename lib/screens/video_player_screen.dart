@@ -8292,12 +8292,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       // Plan finding P7: candidate opens used to drop the channel's own
       // headers — the one open path that lost them. Carry them like every
       // other open does.
-      await _openMedia(
-        mk.Media(url, httpHeaders: httpHeaders),
-        play: true,
-        liveStream: true,
-      );
-      openDone = true;
+      try {
+        // Some live Xtream endpoints never resolve/open at the native layer:
+        // they keep the Dart Future pending instead of throwing. A timeout
+        // around only the post-open verifier is therefore insufficient.
+        // Bound the actual open call as well so the channel cannot remain in
+        // an endless Loading state.
+        await _openMedia(
+          mk.Media(url, httpHeaders: httpHeaders),
+          play: true,
+          liveStream: true,
+        ).timeout(timeout);
+        openDone = true;
+      } on TimeoutException {
+        debugPrint('Player: live stream open timed out');
+        try {
+          await _player.stop();
+        } catch (_) {}
+        finish(false);
+      }
     } catch (e) {
       debugPrint('Player: stremio candidate failed to open: $e');
       finish(false);
