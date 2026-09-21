@@ -1,6 +1,9 @@
 name: Build Release Artifacts
 
 on:
+  push:
+    branches:
+      - feature/iptv-external-audio-source
   release:
     types: [published]
   workflow_dispatch:
