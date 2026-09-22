@@ -756,13 +756,6 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
                 'Use a different IPTV channel for audio while keeping this video.',
             onTap: () async => widget.onExternalAudioPickerRequested!(),
           ),
-          if (widget.selectedExternalAudioUrl != null)
-            _MenuRow(
-              label: 'Remove external audio',
-              sublabel: 'Return to the video channel audio.',
-              destructiveDim: true,
-              onTap: () async => widget.onExternalAudioPickerRequested!(),
-            ),
           if (widget.selectedExternalAudioUrl != null &&
               widget.onExternalAudioRemove != null)
             _MenuRow(
