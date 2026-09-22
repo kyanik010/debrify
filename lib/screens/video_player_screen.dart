@@ -665,6 +665,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _showIptvChannelSheet = false;
   int _currentIptvIndex = 0;
 
+  // Independent IPTV audio source. This is deliberately separate from
+  // widget.audioUrl, which is reserved for launch-time split media such as
+  // YouTube. The value here is selected live from the IPTV channel directory.
+  String? _externalIptvAudioUrl;
+  String? _externalIptvAudioName;
+  double _externalIptvAudioSyncSeconds = 0.0;
+
   /// Phase 0 of the IPTV resilience plan: per-tune debugPrint diagnostics,
   /// same log grammar as the native player's IptvTuneDiagnostics.kt. Inert
   /// for non-IPTV playback (nothing calls onTuneStart there).
@@ -2645,6 +2652,103 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return forGuide
         ? policy.guideProgressFrom(TrackingSource.mdblist, percent)
         : percent;
+  }
+
+  Future<void> _showExternalAudioPicker() async {
+    final channels = _effectiveIptvChannels ??
+        widget.iptvChannels ??
+        const <IptvChannel>[];
+    if (channels.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No IPTV channels are available for external audio')),
+        );
+      }
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ExternalAudioSheet(
+        channels: channels,
+        currentVideoUrl: _currentIptvChannel?.url ?? widget.videoUrl,
+        selectedUrl: _externalIptvAudioUrl,
+        syncSeconds: _externalIptvAudioSyncSeconds,
+        onSelected: _selectExternalIptvAudio,
+        onRemove: _removeExternalIptvAudio,
+        onSyncChanged: _setExternalIptvAudioSync,
+      ),
+    );
+  }
+
+  Future<void> _selectExternalIptvAudio(IptvChannel channel) async {
+    if (!mounted) return;
+    final ticket = _iptvSwitchTicket;
+    try {
+      await _setExternalAudioTrack(channel.url);
+      if (!mounted || ticket != _iptvSwitchTicket) return;
+      setState(() {
+        _externalIptvAudioUrl = channel.url;
+        _externalIptvAudioName = channel.numberedName;
+        _externalIptvAudioSyncSeconds = 0.0;
+      });
+      await _setExternalIptvAudioSync(0.0);
+      debugPrint(
+        'VideoPlayer: selected IPTV external audio channel '
+        '${channel.numberedName}',
+      );
+    } catch (e) {
+      debugPrint('VideoPlayer: IPTV external audio selection failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _removeExternalIptvAudio() async {
+    final platform = _player.platform;
+    final selectedId = _player.state.track.audio.id;
+    try {
+      if (platform is mk.NativePlayer &&
+          _externalIptvAudioUrl != null &&
+          selectedId.isNotEmpty &&
+          selectedId.toLowerCase() != 'auto' &&
+          selectedId.toLowerCase() != 'no') {
+        await platform.command(['audio-remove', selectedId]);
+        await _player.setAudioTrack(mk.AudioTrack.auto());
+      } else if (_externalIptvAudioUrl != null) {
+        await _player.setAudioTrack(mk.AudioTrack.auto());
+      }
+    } catch (e) {
+      debugPrint('VideoPlayer: failed to remove IPTV external audio: $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _externalIptvAudioUrl = null;
+      _externalIptvAudioName = null;
+      _externalIptvAudioSyncSeconds = 0.0;
+    });
+    await _setExternalIptvAudioSync(0.0);
+  }
+
+  Future<void> _setExternalIptvAudioSync(double seconds) async {
+    final clamped = seconds.clamp(-30.0, 30.0).toDouble();
+    final platform = _player.platform;
+    if (platform is mk.NativePlayer) {
+      try {
+        await platform.setProperty('audio-delay', clamped.toString());
+      } catch (e) {
+        debugPrint('VideoPlayer: failed to set external audio sync: $e');
+      }
+    }
+    if (mounted) {
+      setState(() => _externalIptvAudioSyncSeconds = clamped);
+    }
+  }
+
+  Future<void> _clearExternalIptvAudioForVideoSwitch() async {
+    if (_externalIptvAudioUrl == null) return;
+    await _removeExternalIptvAudio();
   }
 
   /// Load an external audio track to play alongside a video-only stream
@@ -16629,6 +16733,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       subtitleIdentityLabel: _subtitleIdentityLabelForSheet(),
       onSubtitleStyleChanged: _onSubtitleStyleChanged,
       onSyncRequested: _showSyncOverlayPanel,
+      externalAudioChannels:
+          _effectiveIptvChannels ?? widget.iptvChannels ?? const <IptvChannel>[],
+      selectedExternalAudioUrl: _externalIptvAudioUrl,
+      onExternalAudioPickerRequested: _showExternalAudioPicker,
+      onExternalAudioRemove: _removeExternalIptvAudio,
       showSpeed: !_iptvZapBannerOwnsIdentity,
       speed: _playbackSpeed,
       onSpeedSelected: _setPlaybackSpeed,
