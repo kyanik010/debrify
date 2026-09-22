@@ -107,6 +107,7 @@ class PlayerMenuPanel extends StatefulWidget {
   final List<IptvChannel> externalAudioChannels;
   final String? selectedExternalAudioUrl;
   final Future<void> Function()? onExternalAudioPickerRequested;
+  final Future<void> Function()? onExternalAudioRemove;
 
   // ── Speed ──
   final bool showSpeed;
@@ -158,6 +159,7 @@ class PlayerMenuPanel extends StatefulWidget {
     this.externalAudioChannels = const [],
     this.selectedExternalAudioUrl,
     this.onExternalAudioPickerRequested,
+    this.onExternalAudioRemove,
     this.showSpeed = true,
     required this.speed,
     required this.onSpeedSelected,
@@ -760,6 +762,14 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
               sublabel: 'Return to the video channel audio.',
               destructiveDim: true,
               onTap: () async => widget.onExternalAudioPickerRequested!(),
+            ),
+          if (widget.selectedExternalAudioUrl != null &&
+              widget.onExternalAudioRemove != null)
+            _MenuRow(
+              label: 'Remove external audio',
+              sublabel: 'Return to the video channel audio.',
+              destructiveDim: true,
+              onTap: () async => widget.onExternalAudioRemove!(),
             ),
         ];
       case PlayerMenuSection.speed:
