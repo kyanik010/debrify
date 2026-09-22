@@ -88,6 +88,7 @@ import 'video_player/widgets/transition_overlay.dart';
 import 'video_player/widgets/pikpak_retry_overlay.dart';
 import 'video_player/widgets/buffering_indicator.dart';
 import 'video_player/widgets/tracks_sheet.dart';
+import 'video_player/widgets/external_audio_sheet.dart';
 import 'video_player/widgets/player_menu_panel.dart';
 import 'video_player/widgets/playlist_sheet.dart';
 import 'video_player/widgets/channel_guide.dart';
