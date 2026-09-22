@@ -1,4 +1,4 @@
-name: Build Release Artifacts
+name: Build Release Artifacts # Android release validation
 
 on:
   push:
