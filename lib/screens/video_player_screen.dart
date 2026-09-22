@@ -8053,6 +8053,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // intent could take the newer ticket, hijacking playback back to the
     // channel the user just left.
     final ticket = ++_iptvSwitchTicket;
+    await _clearExternalIptvAudioForVideoSwitch();
+    if (!mounted || ticket != _iptvSwitchTicket) return;
     // This switch owns the error gate now (a superseded ladder's state doesn't
     // survive). Muted until the new media is opened below; the burst debounce
     // resets too, so this channel can report its own failure.
