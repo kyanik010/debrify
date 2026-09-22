@@ -11,6 +11,7 @@ import '../../../utils/tv_keys.dart';
 import '../models/gesture_state.dart';
 import '../services/subtitle_settings_service.dart';
 import 'sleep_timer_sheet.dart';
+import '../../../models/iptv_playlist.dart';
 import 'tracks_sheet.dart' show TracksSheetSubtitleSearchResult;
 
 /// The unified player menu (Spotlight grammar) replaces the tracks sheet,
@@ -24,6 +25,7 @@ enum PlayerMenuSection {
   subtitles,
   style,
   sync,
+  externalAudio,
   speed,
   aspect,
   sleep,
@@ -101,6 +103,11 @@ class PlayerMenuPanel extends StatefulWidget {
   // ── Sync (action row: closes the panel into the sync overlay) ──
   final VoidCallback? onSyncRequested;
 
+  // ── External IPTV audio ──
+  final List<IptvChannel> externalAudioChannels;
+  final String? selectedExternalAudioUrl;
+  final Future<void> Function()? onExternalAudioPickerRequested;
+
   // ── Speed ──
   final bool showSpeed;
   final double speed;
@@ -148,6 +155,9 @@ class PlayerMenuPanel extends StatefulWidget {
     this.subtitleIdentityLabel,
     this.onSubtitleStyleChanged,
     this.onSyncRequested,
+    this.externalAudioChannels = const [],
+    this.selectedExternalAudioUrl,
+    this.onExternalAudioPickerRequested,
     this.showSpeed = true,
     required this.speed,
     required this.onSpeedSelected,
@@ -429,6 +439,13 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
         'Sync',
         isAction: true,
       ),
+    if (w.externalAudioChannels.isNotEmpty &&
+        w.onExternalAudioPickerRequested != null)
+      const _SectionDef(
+        PlayerMenuSection.externalAudio,
+        Icons.graphic_eq_rounded,
+        'External Audio',
+      ),
     if (w.showSpeed)
       const _SectionDef(PlayerMenuSection.speed, Icons.speed_rounded, 'Speed'),
     const _SectionDef(
@@ -477,6 +494,9 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
       case PlayerMenuSection.sync:
         final label = _style?.syncOffsetLabel ?? '0';
         return label == '0' ? 'In sync' : label;
+      case PlayerMenuSection.externalAudio:
+        if (widget.selectedExternalAudioUrl != null) return 'Selected';
+        return 'Choose channel';
       case PlayerMenuSection.speed:
         return _speedLabel(widget.speed);
       case PlayerMenuSection.aspect:
@@ -724,6 +744,24 @@ class PlayerMenuPanelState extends State<PlayerMenuPanel>
         return _styleRows();
       case PlayerMenuSection.sync:
         return const [];
+      case PlayerMenuSection.externalAudio:
+        return [
+          _MenuRow(
+            label: widget.selectedExternalAudioUrl == null
+                ? 'Choose IPTV audio channel'
+                : 'Change audio channel',
+            sublabel:
+                'Use a different IPTV channel for audio while keeping this video.',
+            onTap: () async => widget.onExternalAudioPickerRequested!(),
+          ),
+          if (widget.selectedExternalAudioUrl != null)
+            _MenuRow(
+              label: 'Remove external audio',
+              sublabel: 'Return to the video channel audio.',
+              destructiveDim: true,
+              onTap: () async => widget.onExternalAudioPickerRequested!(),
+            ),
+        ];
       case PlayerMenuSection.speed:
         return [
           for (final v in const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0])
