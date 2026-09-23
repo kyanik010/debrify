@@ -426,6 +426,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _externalAudioSyncInFlight = false;
   DateTime? _externalAudioLastCorrection;
 
+  // While external IPTV audio is active, the main player must not keep its
+  // own live audio decoder/output running. On Android this avoids competing
+  // audio resources and unnecessary decoding. The previous main aid value is
+  // restored when external audio is removed.
+  String? _externalAudioPreviousMainAid;
+
   // _player is assigned partway through the async _initializePlayer(); if the
   // user backs out before that (or init throws first), dispose() must not
   // touch the unassigned late field (LateInitializationError during pop).
@@ -2723,6 +2729,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     } catch (e) {
       debugPrint('VideoPlayer: failed to stop external audio: $e');
     }
+
+    // Stop the secondary output first, then restore the main audio chain. This
+    // prevents the handoff from briefly running two live outputs.
+    await _restoreMainAudioAfterExternal();
+
     if (!mounted) return;
     setState(() {
       _externalIptvAudioUrl = null;
@@ -2767,24 +2778,76 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// separators. Must be called AFTER the main media has loaded.
   Future<void> _ensureExternalAudioPlayer() async {
     if (_externalAudioPlayer != null) return;
+
+    // Keep the secondary player strictly audio-only and much smaller than the
+    // main player. This avoids a second 32 MB disk-backed IPTV cache competing
+    // with the main high-resolution video stream.
     final player = mk.Player(
       configuration: mk.PlayerConfiguration(
+        vo: 'null',
+        bufferSize: 16 * 1024 * 1024,
+        title: 'Debrify External Audio',
         logLevel: mk.MPVLogLevel.error,
       ),
     );
     _externalAudioPlayer = player;
 
-    // No VideoController is attached. Explicitly disable video too, so an
-    // IPTV stream containing video+audio cannot create a second video output.
+    // NativePlayer starts with vid=no before mpv initialization. There is no
+    // VideoController for this player, and the output is explicitly null.
+    // Use Android AudioTrack for the external stream instead of the default
+    // OpenSL ES path so the secondary stream does not compete for the same
+    // low-latency audio path as the main player.
     final platform = player.platform;
     if (platform is mk.NativePlayer) {
       try {
         await platform.setProperty('vid', 'no');
+        await platform.setProperty('vo', 'null');
         await platform.setProperty('audio-display', 'no');
+        await platform.setProperty('ao', 'audiotrack');
         await platform.setProperty('cache', 'yes');
+        await platform.setProperty('cache-on-disk', 'no');
       } catch (e) {
         debugPrint('VideoPlayer: external audio player setup failed: $e');
       }
+    }
+  }
+
+  Future<void> _disableMainAudioForExternal() async {
+    if (_externalAudioPreviousMainAid != null) return;
+    final platform = _player.platform;
+    if (platform is! mk.NativePlayer) return;
+    try {
+      final aid = await platform.getProperty('aid');
+      if (aid.isEmpty) return;
+      _externalAudioPreviousMainAid = aid;
+      if (aid != 'no') {
+        await platform.setProperty('aid', 'no');
+      }
+      debugPrint(
+        'VideoPlayer: disabled main audio while external IPTV audio is active '
+        '(previous aid=$aid)',
+      );
+    } catch (e) {
+      debugPrint('VideoPlayer: failed to disable main audio: $e');
+    }
+  }
+
+  Future<void> _restoreMainAudioAfterExternal() async {
+    final previousAid = _externalAudioPreviousMainAid;
+    _externalAudioPreviousMainAid = null;
+    if (previousAid == null || previousAid.isEmpty || previousAid == 'no') {
+      return;
+    }
+    final platform = _player.platform;
+    if (platform is! mk.NativePlayer) return;
+    try {
+      await platform.setProperty('aid', previousAid);
+      debugPrint(
+        'VideoPlayer: restored main audio after external IPTV audio '
+        '(aid=$previousAid)',
+      );
+    } catch (e) {
+      debugPrint('VideoPlayer: failed to restore main audio: $e');
     }
   }
 
@@ -2826,9 +2889,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       final audio = _externalAudioPlayer;
       if (audio == null) return;
 
+      // Remove the main player's active audio chain before the external output
+      // starts. This leaves one live Android audio output during the dual-source
+      // session and saves the main player from decoding unused audio.
+      await _disableMainAudioForExternal();
       await audio.stop();
       await audio.setVolume(0.0);
-      await audio.open(mk.Media(audioUrl), play: false);
+
+      if (generation != _externalAudioGeneration || !mounted) return;
+
+      // Start directly in playing state. The old path waited up to 8 seconds
+      // for a playing event before unmuting, which added unnecessary startup
+      // latency and kept the selection operation open much longer than needed.
+      await audio.open(mk.Media(audioUrl), play: true);
 
       if (generation != _externalAudioGeneration || !mounted) return;
 
@@ -2839,19 +2912,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           debugPrint('VideoPlayer: external audio initial seek skipped: $e');
         }
       }
-      if (_isPlaying) await audio.play();
-
-      // Never block the main video on an unreliable provider playing event.
-      try {
-        await audio.stream.playing
-            .firstWhere((playing) => playing)
-            .timeout(const Duration(seconds: 8));
-      } catch (_) {}
 
       if (generation != _externalAudioGeneration || !mounted) return;
       await audio.setVolume(100.0);
       unawaited(_syncExternalAudioToVideoPosition(force: true));
     } catch (e) {
+      await _restoreMainAudioAfterExternal();
       debugPrint('VideoPlayer: failed to set external audio track: $e');
     }
   }
