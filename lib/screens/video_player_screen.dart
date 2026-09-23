@@ -418,6 +418,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   );
 
   late mk.Player _player;
+
+  // External IPTV audio uses an isolated libmpv handle. Never load the
+  // external network stream into the main video handle via audio-add.
+  mk.Player? _externalAudioPlayer;
+  int _externalAudioGeneration = 0;
+  bool _externalAudioSyncInFlight = false;
+  DateTime? _externalAudioLastCorrection;
+
   // _player is assigned partway through the async _initializePlayer(); if the
   // user backs out before that (or init throws first), dispose() must not
   // touch the unassigned late field (LateInitializationError during pop).
@@ -2707,21 +2715,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   Future<void> _removeExternalIptvAudio() async {
-    final platform = _player.platform;
-    final selectedId = _player.state.track.audio.id;
+    ++_externalAudioGeneration;
+    final audio = _externalAudioPlayer;
     try {
-      if (platform is mk.NativePlayer &&
-          _externalIptvAudioUrl != null &&
-          selectedId.isNotEmpty &&
-          selectedId.toLowerCase() != 'auto' &&
-          selectedId.toLowerCase() != 'no') {
-        await platform.command(['audio-remove', selectedId]);
-        await _player.setAudioTrack(mk.AudioTrack.auto());
-      } else if (_externalIptvAudioUrl != null) {
-        await _player.setAudioTrack(mk.AudioTrack.auto());
-      }
+      await audio?.stop();
+      await audio?.setVolume(0.0);
     } catch (e) {
-      debugPrint('VideoPlayer: failed to remove IPTV external audio: $e');
+      debugPrint('VideoPlayer: failed to stop external audio: $e');
     }
     if (!mounted) return;
     setState(() {
@@ -2742,6 +2742,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         debugPrint('VideoPlayer: failed to set external audio sync: $e');
       }
     }
+    final audio = _externalAudioPlayer;
+    if (audio != null) {
+      try {
+        final audioPlatform = audio.platform;
+        if (audioPlatform is mk.NativePlayer) {
+          await audioPlatform.setProperty(
+            'audio-delay',
+            clamped.toString(),
+          );
+        }
+      } catch (e) {
+        debugPrint('VideoPlayer: failed to update external audio sync: $e');
+      }
+    }
     if (mounted) {
       setState(() => _externalIptvAudioSyncSeconds = clamped);
     }
@@ -2757,9 +2771,92 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// AudioTrack.uri (mpv `audio-add`), which is URL-safe — unlike the
   /// `audio-files` path-list option, which mangles URLs on the `:`/`,`
   /// separators. Must be called AFTER the main media has loaded.
-  Future<void> _setExternalAudioTrack(String audioUrl) async {
+  Future<void> _ensureExternalAudioPlayer() async {
+    if (_externalAudioPlayer != null) return;
+    final player = mk.Player(
+      configuration: const mk.PlayerConfiguration(
+        logLevel: mk.MPVLogLevel.error,
+      ),
+    );
+    _externalAudioPlayer = player;
+
+    // No VideoController is attached. Explicitly disable video too, so an
+    // IPTV stream containing video+audio cannot create a second video output.
+    final platform = player.platform;
+    if (platform is mk.NativePlayer) {
+      try {
+        await platform.setProperty('vid', 'no');
+        await platform.setProperty('audio-display', 'no');
+        await platform.setProperty('cache', 'yes');
+      } catch (e) {
+        debugPrint('VideoPlayer: external audio player setup failed: $e');
+      }
+    }
+  }
+
+  Future<void> _syncExternalAudioToVideoPosition({
+    bool force = false,
+  }) async {
+    final audio = _externalAudioPlayer;
+    if (audio == null || _externalAudioSyncInFlight) return;
+    if (_effectiveIptvChannels != null || _duration <= Duration.zero) return;
+
+    final videoPosition = _position;
+    if (videoPosition <= Duration.zero) return;
+    final drift = videoPosition - audio.state.position;
+    if (!force && drift.abs() < const Duration(milliseconds: 900)) return;
+
+    final now = DateTime.now();
+    if (!force &&
+        _externalAudioLastCorrection != null &&
+        now.difference(_externalAudioLastCorrection!) <
+            const Duration(seconds: 2)) {
+      return;
+    }
+
+    _externalAudioSyncInFlight = true;
+    _externalAudioLastCorrection = now;
     try {
-      await _player.setAudioTrack(mk.AudioTrack.uri(audioUrl));
+      await audio.seek(videoPosition);
+    } catch (e) {
+      debugPrint('VideoPlayer: external audio position sync failed: $e');
+    } finally {
+      _externalAudioSyncInFlight = false;
+    }
+  }
+
+  Future<void> _setExternalAudioTrack(String audioUrl) async {
+    final generation = ++_externalAudioGeneration;
+    try {
+      await _ensureExternalAudioPlayer();
+      final audio = _externalAudioPlayer;
+      if (audio == null) return;
+
+      await audio.stop();
+      await audio.setVolume(0.0);
+      await audio.open(mk.Media(audioUrl), play: false);
+
+      if (generation != _externalAudioGeneration || !mounted) return;
+
+      if (_effectiveIptvChannels == null && _position > Duration.zero) {
+        try {
+          await audio.seek(_position);
+        } catch (e) {
+          debugPrint('VideoPlayer: external audio initial seek skipped: $e');
+        }
+      }
+      if (_isPlaying) await audio.play();
+
+      // Never block the main video on an unreliable provider playing event.
+      try {
+        await audio.stream.playing
+            .firstWhere((playing) => playing)
+            .timeout(const Duration(seconds: 8));
+      } catch (_) {}
+
+      if (generation != _externalAudioGeneration || !mounted) return;
+      await audio.setVolume(100.0);
+      unawaited(_syncExternalAudioToVideoPosition(force: true));
     } catch (e) {
       debugPrint('VideoPlayer: failed to set external audio track: $e');
     }
@@ -3762,6 +3859,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         _iptvLiveRecovery.onProgress(d, wantsPlayback: _isPlaying);
       }
       _position = d;
+      unawaited(_syncExternalAudioToVideoPosition());
       _prepareNextDirectEpisode();
       _updateMdblistPosition();
       _playbackUiClock.updatePosition(d);
@@ -3806,6 +3904,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
       final wasPlaying = _isPlaying;
       _isPlaying = p;
+      final externalAudioPlayer = _externalAudioPlayer;
+      if (externalAudioPlayer != null) {
+        unawaited(
+          (p ? externalAudioPlayer.play() : externalAudioPlayer.pause())
+              .catchError(
+            (Object error) => debugPrint(
+              'VideoPlayer: external audio play-state sync failed: $error',
+            ),
+          ),
+        );
+      }
       ProfileLockController.instance.setPlaybackActive(p);
       _syncWakelock(p);
       _pushPipState();
@@ -11742,6 +11851,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _showBufferingIndicator.dispose();
     _releaseAudioEffectSession();
     _screenDisposed = true;
+    ++_externalAudioGeneration;
+    final externalAudioPlayer = _externalAudioPlayer;
+    _externalAudioPlayer = null;
+    if (externalAudioPlayer != null) {
+      unawaited(
+        externalAudioPlayer.dispose().catchError(
+          (Object error) => debugPrint(
+            'VideoPlayer: external audio player dispose failed: $error',
+          ),
+        ),
+      );
+    }
     final subtitleAutoSync = _subtitleAutoSync;
     _subtitleAutoSync = null;
     if (_playerCreated) {
