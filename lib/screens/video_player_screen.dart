@@ -2734,14 +2734,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   Future<void> _setExternalIptvAudioSync(double seconds) async {
     final clamped = seconds.clamp(-30.0, 30.0).toDouble();
-    final platform = _player.platform;
-    if (platform is mk.NativePlayer) {
-      try {
-        await platform.setProperty('audio-delay', clamped.toString());
-      } catch (e) {
-        debugPrint('VideoPlayer: failed to set external audio sync: $e');
-      }
-    }
+    // External IPTV audio has its own libmpv handle. Never modify the main
+    // video player's audio-delay while the secondary stream is active.
     final audio = _externalAudioPlayer;
     if (audio != null) {
       try {
