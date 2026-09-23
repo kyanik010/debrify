@@ -2774,7 +2774,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Future<void> _ensureExternalAudioPlayer() async {
     if (_externalAudioPlayer != null) return;
     final player = mk.Player(
-      configuration: const mk.PlayerConfiguration(
+      configuration: mk.PlayerConfiguration(
         logLevel: mk.MPVLogLevel.error,
       ),
     );
