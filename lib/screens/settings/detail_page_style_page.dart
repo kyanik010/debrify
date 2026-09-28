@@ -1,5 +1,6 @@
 import '../../theme/app_looks.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../../utils/arabic_text.dart';
 
 import '../../services/analytics_service.dart';
 import '../../services/storage_service.dart';
