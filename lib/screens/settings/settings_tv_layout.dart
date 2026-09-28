@@ -1,7 +1,8 @@
 import 'playback_settings_section.dart';
 import 'tv_collection_list_style_page.dart';
 import '../../widgets/collections/tmdb_attribution.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import '../../utils/tv_reveal.dart';
 import 'package:flutter/services.dart';
 
