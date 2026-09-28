@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 
 import '../../models/iptv_playlist.dart' show IptvChannel;
 import '../../services/iptv_media_store.dart' show IptvListMeta;
