@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../../../services/webdav_sync/webdav_sync_graph_tier.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import '../../../services/webdav_sync/webdav_sync_device_names.dart';
 import '../../../widgets/tv_text_field.dart';
 
