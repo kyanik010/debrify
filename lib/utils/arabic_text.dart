@@ -196,7 +196,7 @@ String arabicUiText(String input) {
 }
 
 class Text extends material.Text {
-  const Text(
+  Text(
     String data, {
     super.key,
     super.style,
