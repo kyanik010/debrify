@@ -7,7 +7,8 @@ import 'dart:io' show File, Platform, exit;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../utils/arabic_text.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
@@ -5051,7 +5052,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
 
         return AlertDialog(
-          title: const Text('Navigation'),
+          title: Text('Navigation'),
           contentPadding: const EdgeInsets.fromLTRB(0, 16, 0, 12),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -5437,13 +5438,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               (passphraseController.text.isNotEmpty &&
                   passphraseController.text == confirmController.text);
           return AlertDialog(
-            title: const Text('Create backup'),
+            title: Text('Create backup'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('The backup will include:'),
+                  Text('The backup will include:'),
                   const SizedBox(height: 8),
                   ..._backupSummaryLines(
                     summary,
@@ -5466,8 +5467,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     dense: true,
-                    title: const Text('Include credentials'),
-                    subtitle: const Text(
+                    title: Text('Include credentials'),
+                    subtitle: Text(
                       'Off: share your setup without your accounts. Skips '
                       'anything that embeds them: addons, Xtream providers, '
                       'indexers, starred channels and lists. M3U URLs are '
@@ -5481,7 +5482,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     dense: true,
-                    title: const Text('Encrypt with a passphrase'),
+                    title: Text('Encrypt with a passphrase'),
                     value: usePassphrase,
                     onChanged: (v) => setDialogState(() => usePassphrase = v),
                   ),
@@ -5526,7 +5527,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     )
                   else if (includeCredentials)
-                    const Text(
+                    Text(
                       'Credentials are stored in plain text. Keep this file '
                       'private and treat it like a password.',
                       style: TextStyle(fontSize: 12, color: Color(0xFFEF4444)),
@@ -5537,13 +5538,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
+                child: Text('Cancel'),
               ),
               FilledButton(
                 onPressed: passphraseOk
                     ? () => Navigator.of(context).pop(true)
                     : null,
-                child: const Text('Save backup'),
+                child: Text('Save backup'),
               ),
             ],
           );
@@ -5736,7 +5737,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context: context,
         builder: (context) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Backup is encrypted'),
+            title: Text('Backup is encrypted'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -5766,11 +5767,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(null),
-                child: const Text('Cancel'),
+                child: Text('Cancel'),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(controller.text),
-                child: const Text('Unlock'),
+                child: Text('Unlock'),
               ),
             ],
           ),
@@ -5927,7 +5928,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showSettingsDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Restore backup'),
+        title: Text('Restore backup'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -5943,11 +5944,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-            const Text('This backup contains:'),
+            Text('This backup contains:'),
             const SizedBox(height: 8),
             ..._backupSummaryLines(summary).map((line) => Text('• $line')),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Saved credentials (Real-Debrid, Torbox, Premiumize, AllDebrid, PikPak, Trakt, Simkl) will '
               'be overwritten. Addons, search engines, WebDAV servers, '
               'indexer managers, and IPTV providers you already have are kept '
@@ -5985,11 +5986,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Restore'),
+            child: Text('Restore'),
           ),
         ],
       ),
@@ -6270,14 +6271,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               ListTile(
                 leading: const Icon(Icons.folder_rounded),
-                title: const Text('Download location'),
+                title: Text('Download location'),
                 subtitle: Text(_downloadLocationSubtitle),
               ),
               const Divider(height: 1),
               ListTile(
                 autofocus: true,
                 leading: const Icon(Icons.drive_folder_upload_rounded),
-                title: const Text('Choose folder…'),
+                title: Text('Choose folder…'),
                 subtitle: Text(
                   _downloadLocationUsesSaf
                       ? 'Pick any folder, including an SD card. New downloads go there.'
@@ -6291,7 +6292,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (currentTree != null)
                 ListTile(
                   leading: const Icon(Icons.restart_alt_rounded),
-                  title: const Text('Reset to default'),
+                  title: Text('Reset to default'),
                   subtitle: Text(
                     'Save to ${_defaultDownloadLocationLabel.replaceAll(' (default)', '')} again',
                   ),
@@ -6429,18 +6430,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showSettingsDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear download data?'),
-        content: const Text(
+        title: Text('Clear download data?'),
+        content: Text(
           'This removes queued entries and download history. Files already saved to disk stay untouched.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear'),
+            child: Text('Clear'),
           ),
         ],
       ),
@@ -6459,18 +6460,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showSettingsDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear playback data?'),
-        content: const Text(
+        title: Text('Clear playback data?'),
+        content: Text(
           'This resets resume positions and cached playback preferences.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear'),
+            child: Text('Clear'),
           ),
         ],
       ),
@@ -6512,12 +6513,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           if (mayResetDevice)
             TextButton(
               onPressed: () => Navigator.of(context).pop('device'),
-              child: const Text('Reset device…'),
+              child: Text('Reset device…'),
             ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop('profile'),
@@ -6540,12 +6541,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Reset this Debrify installation?'),
+            title: Text('Reset this Debrify installation?'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'All profiles, connections, jobs, schedules, private data, remote pairings, and device keys will be removed. Downloaded and recorded files remain on disk. The app will close and start fresh next launch.',
                 ),
                 const SizedBox(height: 16),
@@ -6569,13 +6570,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
+                child: Text('Cancel'),
               ),
               FilledButton(
                 onPressed: typed.text == 'RESET'
                     ? () => Navigator.of(dialogContext).pop(true)
                     : null,
-                child: const Text('Reset device'),
+                child: Text('Reset device'),
               ),
             ],
           ),
@@ -6846,7 +6847,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _startAndroidUpdateDownload(release);
                           },
                           icon: const Icon(Icons.system_update_alt_rounded),
-                          label: const Text('Download & Install'),
+                          label: Text('Download & Install'),
                         ),
                       OutlinedButton.icon(
                         onPressed: () {
@@ -6854,7 +6855,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _openReleasesPage(release.htmlUrl);
                         },
                         icon: const Icon(Icons.open_in_new_rounded),
-                        label: const Text('Open Releases Page'),
+                        label: Text('Open Releases Page'),
                       ),
                     ],
                   ),
