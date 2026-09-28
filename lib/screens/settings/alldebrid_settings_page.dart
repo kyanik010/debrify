@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../../utils/arabic_text.dart';
 import '../../services/storage_service.dart';
 import '../../services/alldebrid_account_service.dart';
 import '../../services/analytics_service.dart';
@@ -174,8 +175,8 @@ class _AllDebridSettingsPageState extends State<AllDebridSettingsPage> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Hide AllDebrid from navigation?'),
-          content: const Text(
+          title: Text('Hide AllDebrid from navigation?'),
+          content: Text(
             'The AllDebrid tab will be removed from the navigation bar. To show '
             'it again you will need to log out and log back in.',
           ),
@@ -186,14 +187,14 @@ class _AllDebridSettingsPageState extends State<AllDebridSettingsPage> {
                 // Land DPAD focus on the safe choice when the dialog opens.
                 autofocus: true,
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel'),
+                child: Text('Cancel'),
               ),
             ),
             _FocusRing(
               radius: 12,
               child: TextButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Hide'),
+                child: Text('Hide'),
               ),
             ),
           ],
@@ -254,8 +255,8 @@ class _AllDebridSettingsPageState extends State<AllDebridSettingsPage> {
                       autofocus: _seedEntryFocus,
                       value: _integrationEnabled,
                       onChanged: (value) => _updateIntegrationEnabled(value),
-                      title: const Text('Enable AllDebrid'),
-                      subtitle: const Text(
+                      title: Text('Enable AllDebrid'),
+                      subtitle: Text(
                         'Turn this off to hide AllDebrid options across the app.',
                       ),
                       contentPadding: const EdgeInsets.symmetric(
@@ -397,7 +398,7 @@ class _AllDebridSettingsPageState extends State<AllDebridSettingsPage> {
                                                             strokeWidth: 2,
                                                           ),
                                                     )
-                                                  : const Text('Save'),
+                                                  : Text('Save'),
                                             ),
                                           ),
                                         ),
@@ -418,7 +419,7 @@ class _AllDebridSettingsPageState extends State<AllDebridSettingsPage> {
                                                         _addApiKeyButtonFocusNode,
                                                       );
                                                     },
-                                              child: const Text('Cancel'),
+                                              child: Text('Cancel'),
                                             ),
                                           ),
                                         ),
@@ -460,7 +461,7 @@ class _AllDebridSettingsPageState extends State<AllDebridSettingsPage> {
                                             focusNode: _logoutButtonFocusNode,
                                             onPressed: _deleteKey,
                                             icon: const Icon(Icons.logout),
-                                            label: const Text('Logout'),
+                                            label: Text('Logout'),
                                             style: OutlinedButton.styleFrom(
                                               foregroundColor: t.danger,
                                               side: BorderSide(
@@ -491,7 +492,7 @@ class _AllDebridSettingsPageState extends State<AllDebridSettingsPage> {
                                                 });
                                           },
                                           icon: const Icon(Icons.add),
-                                          label: const Text('Add API Key'),
+                                          label: Text('Add API Key'),
                                         ),
                                       ),
                                     ],
@@ -511,7 +512,7 @@ class _AllDebridSettingsPageState extends State<AllDebridSettingsPage> {
                                     onChanged: _savedApiKey != null
                                         ? _toggleHideFromNav
                                         : null,
-                                    title: const Text(
+                                    title: Text(
                                       'Hide from Navigation',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w500,
