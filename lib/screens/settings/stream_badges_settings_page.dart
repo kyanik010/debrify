@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 
 import '../../models/stream_badge_rules.dart';
 import '../../services/analytics_service.dart';
