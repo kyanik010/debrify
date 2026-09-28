@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 
 /// Destinations within the top-level Playback setting.
 enum PlaybackSettingsSection {
