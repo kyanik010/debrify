@@ -13,12 +13,16 @@ void main() {
     final original = source;
     final isRootSettings = file.path.endsWith('screens/settings_screen.dart');
     final importPath = isRootSettings ? "../utils/arabic_text.dart" : "../../utils/arabic_text.dart";
-    if (source.contains("import 'package:flutter/material.dart';") && !source.contains("utils/arabic_text.dart")) {
+
+    if (source.contains("import 'package:flutter/material.dart';")) {
       source = source.replaceFirst(
         "import 'package:flutter/material.dart';",
-        "import 'package:flutter/material.dart' hide Text;\\nimport '$importPath';",
+        "import 'package:flutter/material.dart' hide Text;\nimport '$importPath';",
       );
+    } else if (!source.contains("utils/arabic_text.dart")) {
+      source = "import 'package:flutter/material.dart' hide Text;\nimport '$importPath';\n" + source;
     }
+
     source = source.replaceAll('const Text(', 'Text(');
     if (source != original) {
       file.writeAsStringSync(source);
