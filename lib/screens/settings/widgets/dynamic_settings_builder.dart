@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import 'package:synchronized/synchronized.dart';
 import '../../../services/engine/local_engine_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
