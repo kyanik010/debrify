@@ -2,7 +2,7 @@ name: Build Android APK - IPTV Loading Fix
 
 on:
   push:
-    branches: [main]
+    branches: [main, arabic-localization-full]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,9 @@ jobs:
         with:
           flutter-version: "3.44.8"
           channel: stable
+
+      - name: Prepare Arabic settings UI
+        run: dart run tool/apply_arabic_settings.dart
 
       - name: Get dependencies
         run: flutter pub get
