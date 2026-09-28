@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 
 /// A failed read must leave an actionable page, without exposing editable
 /// fallback values that could overwrite the user's saved settings.
