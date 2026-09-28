@@ -5,7 +5,8 @@ import '../../services/webdav_sync/webdav_sync_device_removal.dart';
 import 'widgets/sync_device_tile.dart';
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/webdav_item.dart';
