@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import 'dart:async';
 
 import '../../services/profiles/connection_resource_service.dart';
