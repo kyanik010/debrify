@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import 'settings/tv_collection_list_style_page.dart';
 import 'settings/metadata_settings_page.dart';
 import '../widgets/collections/tmdb_attribution.dart';
