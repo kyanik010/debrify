@@ -3,7 +3,8 @@ import 'imported_launch_animations.dart';
 import '../../services/launch_animation/launch_animation_library.dart';
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 
 import '../../services/analytics_service.dart';
 import '../../services/storage_service.dart';
