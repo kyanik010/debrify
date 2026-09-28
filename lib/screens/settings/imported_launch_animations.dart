@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import 'package:flutter/services.dart';
 
 import '../../services/launch_animation/launch_animation_library.dart';
