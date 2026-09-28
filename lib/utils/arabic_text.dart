@@ -188,14 +188,48 @@ String arabicUiText(String input) {
     'Theme':'المظهر','Dark':'داكن','Light':'فاتح','System':'النظام','Text':'النص','Brightness':'السطوع','Font':'الخط','Screen':'الشاشة','Phone':'الهاتف','Desktop':'سطح المكتب','Remote':'التحكم عن بُعد',
     'IPTV':'IPTV','EPG':'EPG','Addons':'الإضافات','Addon':'إضافة','Collections':'المجموعات','Movies':'الأفلام','Series':'المسلسلات','Live':'مباشر','TV':'التلفاز','Guide':'الدليل',
     'Update':'تحديث','Updates':'التحديثات','Version':'الإصدار','Support':'الدعم','Warning':'تحذير','Error':'خطأ','Success':'نجاح','Failed':'فشل','Loading':'جارٍ التحميل','Offline':'غير متصل',
-    'Automatic':'تلقائي','Automatically':'تلقائيًا','Manual':'يدوي','Custom':'مخصص','Preferred':'مفضّل','Current':'الحالي','New':'جديد','Old':'قديم','Show':'إظهار','Hide':'إخفاء','Choose':'اختيار','Select':'اختيار','Use':'استخدام','Enable':'تفعيل','Always':'دائمًا','Never':'أبدًا',
-    'Start':'بدء','Stop':'إيقاف','Open':'فتح','Open':'فتح','Close':'إغلاق','Next':'التالي','Previous':'السابق','Back':'رجوع','Continue':'متابعة','Confirm':'تأكيد','Yes':'نعم','No':'لا',
+    'Automatic':'تلقائي','Automatically':'تلقائيًا','Manual':'يدوي','Custom':'مخصص','Preferred':'مفضّل','Current':'الحالي','New':'جديد','Old':'قديم','Show':'إظهار','Hide':'إخفاء','Choose':'اختيار','Select':'اختيار','Use':'استخدام','Always':'دائمًا','Never':'أبدًا',
+    'Start':'بدء','Stop':'إيقاف','Open':'فتح','Close':'إغلاق','Next':'التالي','Previous':'السابق','Back':'رجوع','Continue':'متابعة','Confirm':'تأكيد','Yes':'نعم','No':'لا',
   };
   result = result.replaceAllMapped(RegExp(r'\b[A-Za-z][A-Za-z0-9_-]*\b'), (m) => words[m.group(0)!] ?? m.group(0)!);
   return result;
 }
 
 class Text extends material.Text {
+  static material.Text rich(
+    material.InlineSpan textSpan, {
+    material.Key? key,
+    material.TextStyle? style,
+    material.StrutStyle? strutStyle,
+    material.TextAlign? textAlign,
+    material.TextDirection? textDirection,
+    material.Locale? locale,
+    bool? softWrap,
+    material.TextOverflow? overflow,
+    material.TextScaler? textScaler,
+    int? maxLines,
+    String? semanticsLabel,
+    material.TextWidthBasis? textWidthBasis,
+    material.TextHeightBehavior? textHeightBehavior,
+    material.Color? selectionColor,
+  }) => material.Text.rich(
+        textSpan,
+        key: key,
+        style: style,
+        strutStyle: strutStyle,
+        textAlign: textAlign,
+        textDirection: textDirection,
+        locale: locale,
+        softWrap: softWrap,
+        overflow: overflow,
+        textScaler: textScaler,
+        maxLines: maxLines,
+        semanticsLabel: semanticsLabel,
+        textWidthBasis: textWidthBasis,
+        textHeightBehavior: textHeightBehavior,
+        selectionColor: selectionColor,
+      );
+
   Text(
     String data, {
     super.key,
