@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/analytics_service.dart';
