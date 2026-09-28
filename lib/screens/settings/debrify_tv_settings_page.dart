@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../../utils/arabic_text.dart';
 import '../../utils/tv_reveal.dart';
 import 'widgets/dynamic_settings_builder.dart';
 import 'widgets/settings_widgets.dart';
@@ -179,7 +180,7 @@ class _DebrifyTvSettingsPageState extends State<DebrifyTvSettingsPage> {
       child: OutlinedButton.icon(
         onPressed: () => _showResetConfirmation(context),
         icon: const Icon(Icons.refresh),
-        label: const Text('Reset to Defaults'),
+        label: Text('Reset to Defaults'),
         // State-resolved accent border + lit fill so DPAD focus is
         // unmistakable on TV (default focus overlay is too faint).
         style: ButtonStyle(
@@ -216,8 +217,8 @@ class _DebrifyTvSettingsPageState extends State<DebrifyTvSettingsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reset Settings'),
-        content: const Text(
+        title: Text('Reset Settings'),
+        content: Text(
           'Are you sure you want to reset all Debrify TV settings to their default values?',
         ),
         actions: [
@@ -237,7 +238,7 @@ class _DebrifyTvSettingsPageState extends State<DebrifyTvSettingsPage> {
                     : null,
               ),
             ),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           FilledButton(
             onPressed: () {
@@ -253,7 +254,7 @@ class _DebrifyTvSettingsPageState extends State<DebrifyTvSettingsPage> {
                     : null,
               ),
             ),
-            child: const Text('Reset'),
+            child: Text('Reset'),
           ),
         ],
       ),
