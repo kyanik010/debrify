@@ -1,7 +1,8 @@
 import 'widgets/settings_load_error.dart';
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
