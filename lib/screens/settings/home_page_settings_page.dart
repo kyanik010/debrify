@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'package:debrify/utils/arabic_text.dart';
 import '../../utils/spotlight_interaction_policy.dart';
 import '../../models/stremio_addon.dart';
 import '../../services/home_collections_store.dart';
