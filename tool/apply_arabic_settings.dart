@@ -24,7 +24,7 @@ void main() {
 
     if (hasMaterialImport) {
       source = source.replaceFirst(
-        RegExp(r"import ['"]package:flutter/material\.dart['"];"),
+        RegExp(r'''import ['"]package:flutter/material\.dart['"];'''),
         "import 'package:flutter/material.dart' hide Text;",
       );
     } else {
