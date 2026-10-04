@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-only-cleanup]
     paths:
+      - '.github/workflows/build-android-loading-fix.yml'
       - 'android/**'
       - 'lib/screens/video_player_screen.dart'
       - 'packages/media_kit_libs_android_video_patched/**'
