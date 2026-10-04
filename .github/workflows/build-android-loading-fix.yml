@@ -16,37 +16,26 @@ jobs:
     steps:
       - name: Checkout exact fix
         uses: actions/checkout@v4
-
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: "21"
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.44.8"
           channel: stable
-
       - name: Prepare Arabic settings UI
         run: dart run tool/apply_arabic_settings.dart
-
       - name: Get dependencies
         run: flutter pub get
-
       - name: Cache PGS MediaKit Android libraries
         id: mediakit-cache
         uses: actions/cache@v4
         with:
           path: packages/media_kit_libs_android_video_patched/android/libs
-          key: ${{ runner.os }}-mediakit-pgs-v1-${{ hashFiles(
-            'dev/scripts/build_android_media_kit_libraries.sh',
-            'dev/scripts/patches/libmpv-android-subtitle-decoders.patch',
-            'packages/media_kit_libs_android_video_patched/pubspec.yaml',
-            'packages/media_kit_libs_android_video_patched/android/build.gradle'
-          ) }}
-
+          key: ${{ runner.os }}-mediakit-pgs-v1-${{ hashFiles('dev/scripts/build_android_media_kit_libraries.sh', 'dev/scripts/patches/libmpv-android-subtitle-decoders.patch', 'packages/media_kit_libs_android_video_patched/pubspec.yaml', 'packages/media_kit_libs_android_video_patched/android/build.gradle') }}
       - name: Install native build dependencies
         if: steps.mediakit-cache.outputs.cache-hit != 'true'
         run: |
@@ -54,37 +43,31 @@ jobs:
           sudo apt-get install -y autoconf automake libtool ninja-build nasm pkg-config python3-pip python3-setuptools unzip wget zip
           python3 -m pip install --user meson==1.7.0
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
       - name: Setup Java 17 for MediaKit native build
         if: steps.mediakit-cache.outputs.cache-hit != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Build PGS-capable MediaKit Android libraries
         if: steps.mediakit-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           set -o pipefail
           LOG_FILE="$RUNNER_TEMP/mediakit-build.log"
-
-          if ! dev/scripts/build_android_media_kit_libraries.sh             packages/media_kit_libs_android_video_patched/android/libs             >"$LOG_FILE" 2>&1; then
+          if ! dev/scripts/build_android_media_kit_libraries.sh packages/media_kit_libs_android_video_patched/android/libs >"$LOG_FILE" 2>&1; then
             echo "===== MediaKit build failed: last 300 lines ====="
             tail -n 300 "$LOG_FILE"
             exit 1
           fi
-
           echo "===== MediaKit build completed: summary ====="
           tail -n 80 "$LOG_FILE"
-
       - name: Restore Java 21
         if: steps.mediakit-cache.outputs.cache-hit != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: "21"
-
       - name: Verify cached/generated MediaKit libraries
         shell: bash
         run: |
@@ -93,13 +76,11 @@ jobs:
           test -f packages/media_kit_libs_android_video_patched/android/libs/default-x86.jar
           test -f packages/media_kit_libs_android_video_patched/android/libs/default-x86_64.jar
           test -f packages/media_kit_libs_android_video_patched/android/libs/.debrify-subtitle-build
-          dev/scripts/verify_android_subtitle_decoders.sh             packages/media_kit_libs_android_video_patched/android/libs
-
+          dev/scripts/verify_android_subtitle_decoders.sh packages/media_kit_libs_android_video_patched/android/libs
       - name: Create temporary release signing key
         run: |
           rm -f android/app/release.keystore
-          keytool -genkeypair -v             -keystore android/app/release.keystore             -storepass debrifytest             -keypass debrifytest             -alias debrify             -keyalg RSA             -keysize 2048             -validity 3650             -dname "CN=Debrify Test, OU=Android, O=Debrify, L=Unknown, ST=Unknown, C=US"
-
+          keytool -genkeypair -v -keystore android/app/release.keystore -storepass debrifytest -keypass debrifytest -alias debrify -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Debrify Test, OU=Android, O=Debrify, L=Unknown, ST=Unknown, C=US"
       - name: Create key.properties
         run: |
           cat > android/key.properties << EOF
@@ -108,17 +89,14 @@ jobs:
           keyAlias=debrify
           storeFile=release.keystore
           EOF
-
       - name: Build release APK
         env:
           ORG_GRADLE_PROJECT_debrifyLocalDiagnostics: "false"
         run: flutter build apk --release --target-platform android-arm64 --dart-define=DEBRIFY_LOCAL_VALIDATION=false
-
       - name: Verify APK is non-debuggable
         run: |
           debuggable=$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest debuggable build/app/outputs/flutter-apk/app-release.apk)
           test "$debuggable" = "false"
-
       - name: Verify APK structure, alignment, and signature
         run: |
           APK=build/app/outputs/flutter-apk/app-release.apk
@@ -128,10 +106,8 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest min-sdk "$APK"
           "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest target-sdk "$APK"
-
       - name: Verify packaged Android subtitle decoders
         run: dev/scripts/verify_android_subtitle_decoders.sh build/app/outputs/flutter-apk/app-release.apk
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
