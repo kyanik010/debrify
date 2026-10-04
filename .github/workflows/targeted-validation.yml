@@ -81,8 +81,8 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t dart_files < <(grep -E '^(lib/.*\.dart|tool/.*\.dart)$' "$RUNNER_TEMP/changed-files" | while IFS= read -r f; do [[ -f "$f" ]] && printf '%s\n' "$f"; done)
-          if (\${#dart_files[@]} == 0); then exit 0; fi
-          dart analyze --no-fatal-warnings --no-fatal-infos "${dart_files[@]}"
+          if [[ ${#dart_files[@]} -eq 0 ]]; then exit 0; fi
+          dart analyze --no-fatal-warnings "${dart_files[@]}"
 
       - name: Validate Windows changes
         if: steps.changed.outputs.windows == 'true'
