@@ -17,25 +17,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
 
       - name: Detect changed files
         id: changed
         shell: bash
         env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PUSH_BASE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          if [[ -n "$PR_BASE_SHA" ]]; then
-            BASE_SHA="$PR_BASE_SHA"
+          if [[ -n "$PR_HEAD_SHA" ]]; then
+            CURRENT_SHA="$PR_HEAD_SHA"
+            BASE_SHA="$(git rev-parse "${CURRENT_SHA}^")"
           elif [[ -n "$PUSH_BASE_SHA" && "$PUSH_BASE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            CURRENT_SHA="$GITHUB_SHA"
             BASE_SHA="$PUSH_BASE_SHA"
           else
+            CURRENT_SHA="$GITHUB_SHA"
             BASE_SHA="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
           fi
           echo "BASE_SHA=$BASE_SHA"
-          git diff --name-only "$BASE_SHA" "$GITHUB_SHA" | tee "$RUNNER_TEMP/changed-files"
+          echo "CURRENT_SHA=$CURRENT_SHA"
+          git diff --name-only "$BASE_SHA" "$CURRENT_SHA" | tee "$RUNNER_TEMP/changed-files"
           {
             echo "dart=false"
             echo "android=false"
@@ -73,15 +78,10 @@ jobs:
       - name: Analyze only changed Dart files
         if: steps.changed.outputs.dart == 'true'
         shell: bash
-        env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PUSH_BASE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          if [[ -n "$PR_BASE_SHA" ]]; then BASE_SHA="$PR_BASE_SHA"; else BASE_SHA="$PUSH_BASE_SHA"; fi
-          files="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$GITHUB_SHA" -- 'lib/*.dart' 'lib/**/*.dart' 'tool/*.dart' 'tool/**/*.dart')"
-          if [[ -z "$files" ]]; then exit 0; fi
-          mapfile -t dart_files < <(printf '%s\n' "$files")
+          mapfile -t dart_files < <(grep -E '^(lib/.*\.dart|tool/.*\.dart)$' "$RUNNER_TEMP/changed-files" | while IFS= read -r f; do [[ -f "$f" ]] && printf '%s\n' "$f"; done)
+          if (\${#dart_files[@]} == 0); then exit 0; fi
           dart analyze --no-fatal-warnings --no-fatal-infos "${dart_files[@]}"
 
       - name: Validate Windows changes
