@@ -107,3 +107,4 @@ jobs:
           name: debrify-android-loading-fix
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
+
