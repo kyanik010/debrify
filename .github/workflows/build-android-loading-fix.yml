@@ -1,15 +1,8 @@
 name: Build Android APK - IPTV Loading Fix
 
 on:
-  pull_request:
-    branches: [arabic-localization-full]
-    paths:
-      - 'android/**'
-      - 'packages/media_kit_libs_android_video_patched/**'
-      - 'dev/scripts/build_android_media_kit_libraries.sh'
-      - 'dev/scripts/patches/libmpv-android-subtitle-decoders.patch'
-      - 'pubspec.yaml'
-      - 'pubspec.lock'
+  # PRs use Targeted Validation. This workflow builds APK only for direct pushes
+  # that change Android/runtime inputs, avoiding full builds on every PR sync.
   push:
     branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-only-cleanup]
     paths:
@@ -19,7 +12,6 @@ on:
       - 'dev/scripts/patches/libmpv-android-subtitle-decoders.patch'
       - 'pubspec.yaml'
       - 'pubspec.lock'
-      - '.github/workflows/build-android-loading-fix.yml'
   workflow_dispatch:
 
 permissions:
