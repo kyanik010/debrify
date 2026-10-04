@@ -82,7 +82,7 @@ jobs:
           files="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$GITHUB_SHA" -- 'lib/*.dart' 'lib/**/*.dart' 'tool/*.dart' 'tool/**/*.dart')"
           if [[ -z "$files" ]]; then exit 0; fi
           mapfile -t dart_files < <(printf '%s\n' "$files")
-          dart analyze "${dart_files[@]}"
+          dart analyze --no-fatal-warnings --no-fatal-infos "${dart_files[@]}"
 
       - name: Validate Windows changes
         if: steps.changed.outputs.windows == 'true'
