@@ -2,7 +2,7 @@ name: Build Android APK - IPTV Loading Fix
 
 on:
   push:
-    branches: [main, arabic-localization-full]
+    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign]
   workflow_dispatch:
 
 permissions:
