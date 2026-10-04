@@ -116,11 +116,6 @@ dependency_overrides:
   # subtitle decoders. Release CI fills this package with a pinned patch build.
   media_kit_libs_android_video:
     path: packages/media_kit_libs_android_video_patched
-  # The hosted macOS FFmpeg binary omits Blu-ray PGS and several other common
-  # subtitle decoders. This local package keeps MediaKit's framework layout but
-  # receives a minimally patched, pinned upstream build in macOS release CI.
-  media_kit_libs_macos_video:
-    path: packages/media_kit_libs_macos_video_patched
 dev_dependencies:
   file: ^7.0.1
   flutter_test:
