@@ -3742,8 +3742,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         final hasExternalAudio =
             widget.audioUrl != null && widget.audioUrl!.isNotEmpty;
         try {
+          // Xtream VOD (movies and series episodes) is already a fully
+          // resolved IPTV URL. Do not send it through the generic Stremio/debrid
+          // startup validation gate: that gate requires the playback clock to
+          // advance before accepting a source, which is not an appropriate
+          // contract for an IPTV on-demand URL. Live IPTV keeps its existing
+          // path below.
+          final launchIsIptvVod =
+              launchIptvChannels != null &&
+              ((launchIdx >= 0 && launchIdx < launchIptvChannels.length)
+                  ? launchIptvChannels[launchIdx].contentType == 'vod'
+                  : false);
           final plainOpen =
-              initialUrl.isNotEmpty && (hasExternalAudio || launchIsLiveIptv);
+              initialUrl.isNotEmpty &&
+              (hasExternalAudio || launchIsLiveIptv || launchIsIptvVod);
           final opened = plainOpen
               ? await (() async {
                   await _openMedia(
