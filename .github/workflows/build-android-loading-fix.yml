@@ -1,12 +1,11 @@
 name: Build Android APK - IPTV Loading Fix
 
 on:
-  # PRs use Targeted Validation. This workflow builds APK only for direct pushes
-  # that change Android/runtime inputs, avoiding full builds on every PR sync.
   push:
     branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-only-cleanup]
     paths:
       - 'android/**'
+      - 'lib/screens/video_player_screen.dart'
       - 'packages/media_kit_libs_android_video_patched/**'
       - 'dev/scripts/build_android_media_kit_libraries.sh'
       - 'dev/scripts/patches/libmpv-android-subtitle-decoders.patch'
