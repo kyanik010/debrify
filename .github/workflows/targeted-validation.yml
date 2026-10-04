@@ -1,0 +1,114 @@
+name: Targeted Validation
+
+on:
+  pull_request:
+    branches: [arabic-localization-full]
+  push:
+    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-only-cleanup]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      dart: ${{ steps.filter.outputs.dart }}
+      windows: ${{ steps.filter.outputs.windows }}
+      mediakit: ${{ steps.filter.outputs.mediakit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect changed areas
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            dart:
+              - 'lib/**/*.dart'
+              - 'tool/**/*.dart'
+            windows:
+              - 'windows/**'
+            mediakit:
+              - 'packages/media_kit_libs_android_video_patched/**'
+              - 'dev/scripts/build_android_media_kit_libraries.sh'
+              - 'dev/scripts/patches/libmpv-android-subtitle-decoders.patch'
+
+  dart:
+    needs: changes
+    if: needs.changes.outputs.dart == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+          channel: stable
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Analyze only changed Dart files
+        shell: bash
+        run: |
+          set -euo pipefail
+          files="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$GITHUB_SHA" -- 'lib/**/*.dart' 'tool/**/*.dart' || true)"
+          if [[ -z "$files" ]]; then
+            echo "No changed Dart files to analyze."
+            exit 0
+          fi
+          echo "Changed Dart files:"
+          printf '%s
+' "$files"
+          mapfile -t dart_files < <(printf '%s
+' "$files")
+          dart analyze "${dart_files[@]}"
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+
+  android-targeted:
+    needs: changes
+    if: needs.changes.outputs.mediakit == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify MediaKit patch and native build script
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x dev/scripts/build_android_media_kit_libraries.sh
+          test -s dev/scripts/patches/libmpv-android-subtitle-decoders.patch
+          bash -n dev/scripts/build_android_media_kit_libraries.sh
+          echo "MediaKit targeted validation passed."
+
+  windows-targeted:
+    needs: changes
+    if: needs.changes.outputs.windows == 'true'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+          channel: stable
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Analyze changed Windows Dart files
+        shell: pwsh
+        run: |
+          $files = git diff --name-only $env:BASE_SHA $env:GITHUB_SHA -- 'windows/**/*.dart'
+          if (-not $files) {
+            Write-Host "No changed Windows Dart files."
+            exit 0
+          }
+          dart analyze $files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
