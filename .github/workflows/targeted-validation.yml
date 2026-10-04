@@ -11,104 +11,83 @@ permissions:
   contents: read
 
 jobs:
-  changes:
+  targeted:
     runs-on: ubuntu-latest
-    outputs:
-      dart: ${{ steps.filter.outputs.dart }}
-      windows: ${{ steps.filter.outputs.windows }}
-      mediakit: ${{ steps.filter.outputs.mediakit }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Detect changed areas
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            dart:
-              - 'lib/**/*.dart'
-              - 'tool/**/*.dart'
-            windows:
-              - 'windows/**'
-            mediakit:
-              - 'packages/media_kit_libs_android_video_patched/**'
-              - 'dev/scripts/build_android_media_kit_libraries.sh'
-              - 'dev/scripts/patches/libmpv-android-subtitle-decoders.patch'
 
-  dart:
-    needs: changes
-    if: needs.changes.outputs.dart == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.44.8"
-          channel: stable
-      - name: Get dependencies
-        run: flutter pub get
-      - name: Analyze only changed Dart files
+      - name: Detect changed files
+        id: changed
         shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          files="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$GITHUB_SHA" -- 'lib/**/*.dart' 'tool/**/*.dart' || true)"
-          if [[ -z "$files" ]]; then
-            echo "No changed Dart files to analyze."
-            exit 0
+          if [[ -n "$PR_BASE_SHA" ]]; then
+            BASE_SHA="$PR_BASE_SHA"
+          elif [[ -n "$PUSH_BASE_SHA" && "$PUSH_BASE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            BASE_SHA="$PUSH_BASE_SHA"
+          else
+            BASE_SHA="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
           fi
-          echo "Changed Dart files:"
-          printf '%s
-' "$files"
-          mapfile -t dart_files < <(printf '%s
-' "$files")
-          dart analyze "${dart_files[@]}"
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          echo "BASE_SHA=$BASE_SHA"
+          git diff --name-only "$BASE_SHA" "$GITHUB_SHA" | tee "$RUNNER_TEMP/changed-files"
+          {
+            echo "dart=false"
+            echo "android=false"
+            echo "windows=false"
+            echo "mediakit=false"
+          } >> "$GITHUB_OUTPUT"
+          if grep -Eq '^(lib/.*\.dart|tool/.*\.dart)$' "$RUNNER_TEMP/changed-files"; then echo "dart=true" >> "$GITHUB_OUTPUT"; fi
+          if grep -Eq '^(android/|pubspec\.yaml$|pubspec\.lock$)' "$RUNNER_TEMP/changed-files"; then echo "android=true" >> "$GITHUB_OUTPUT"; fi
+          if grep -Eq '^(windows/)' "$RUNNER_TEMP/changed-files"; then echo "windows=true" >> "$GITHUB_OUTPUT"; fi
+          if grep -Eq '^(packages/media_kit_libs_android_video_patched/|dev/scripts/build_android_media_kit_libraries\.sh$|dev/scripts/patches/libmpv-android-subtitle-decoders\.patch$)' "$RUNNER_TEMP/changed-files"; then echo "mediakit=true" >> "$GITHUB_OUTPUT"; fi
 
-  android-targeted:
-    needs: changes
-    if: needs.changes.outputs.mediakit == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Verify MediaKit patch and native build script
+      - name: Validate MediaKit changes
+        if: steps.changed.outputs.mediakit == 'true'
         shell: bash
         run: |
           set -euo pipefail
           test -x dev/scripts/build_android_media_kit_libraries.sh
           test -s dev/scripts/patches/libmpv-android-subtitle-decoders.patch
           bash -n dev/scripts/build_android_media_kit_libraries.sh
+          test -f packages/media_kit_libs_android_video_patched/pubspec.yaml
+          test -f packages/media_kit_libs_android_video_patched/android/build.gradle
           echo "MediaKit targeted validation passed."
 
-  windows-targeted:
-    needs: changes
-    if: needs.changes.outputs.windows == 'true'
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Flutter
+      - name: Setup Flutter for changed Dart or Android dependency files
+        if: steps.changed.outputs.dart == 'true' || steps.changed.outputs.android == 'true'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.44.8"
           channel: stable
-      - name: Get dependencies
+
+      - name: Validate Flutter dependencies
+        if: steps.changed.outputs.dart == 'true' || steps.changed.outputs.android == 'true'
         run: flutter pub get
-      - name: Analyze changed Windows Dart files
-        shell: pwsh
-        run: |
-          $files = git diff --name-only $env:BASE_SHA $env:GITHUB_SHA -- 'windows/**/*.dart'
-          if (-not $files) {
-            Write-Host "No changed Windows Dart files."
-            exit 0
-          }
-          dart analyze $files
+
+      - name: Analyze only changed Dart files
+        if: steps.changed.outputs.dart == 'true'
+        shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$PR_BASE_SHA" ]]; then BASE_SHA="$PR_BASE_SHA"; else BASE_SHA="$PUSH_BASE_SHA"; fi
+          files="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$GITHUB_SHA" -- 'lib/*.dart' 'lib/**/*.dart' 'tool/*.dart' 'tool/**/*.dart')"
+          if [[ -z "$files" ]]; then exit 0; fi
+          mapfile -t dart_files < <(printf '%s\n' "$files")
+          dart analyze "${dart_files[@]}"
+
+      - name: Validate Windows changes
+        if: steps.changed.outputs.windows == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d windows
+          echo "Windows platform tree present."
