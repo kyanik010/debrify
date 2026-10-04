@@ -10,7 +10,6 @@ on:
       - 'dev/scripts/patches/libmpv-android-subtitle-decoders.patch'
       - 'pubspec.yaml'
       - 'pubspec.lock'
-      - '.github/workflows/build-android-loading-fix.yml'
   push:
     branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-only-cleanup]
     paths:
