@@ -8658,7 +8658,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       // only IPTV-owned VOD is allowed to commit on decoder evidence.
       final isIptvVod =
           source != null &&
-          IptvSourceSearch.owns(source) &&
+          source.iptvPlaylistId != null &&
           (_effectiveContentType == 'movie' || _effectiveContentType == 'series');
       if (!armed || videoWidth <= 0) return;
       if (!isIptvVod && position <= Duration.zero) return;
