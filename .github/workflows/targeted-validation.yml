@@ -1,0 +1,93 @@
+name: Targeted Validation
+
+on:
+  pull_request:
+    branches: [arabic-localization-full]
+  push:
+    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-only-cleanup]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+
+      - name: Detect changed files
+        id: changed
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$PR_HEAD_SHA" ]]; then
+            CURRENT_SHA="$PR_HEAD_SHA"
+            BASE_SHA="$(git rev-parse "${CURRENT_SHA}^")"
+          elif [[ -n "$PUSH_BASE_SHA" && "$PUSH_BASE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            CURRENT_SHA="$GITHUB_SHA"
+            BASE_SHA="$PUSH_BASE_SHA"
+          else
+            CURRENT_SHA="$GITHUB_SHA"
+            BASE_SHA="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+          fi
+          echo "BASE_SHA=$BASE_SHA"
+          echo "CURRENT_SHA=$CURRENT_SHA"
+          git diff --name-only "$BASE_SHA" "$CURRENT_SHA" | tee "$RUNNER_TEMP/changed-files"
+          {
+            echo "dart=false"
+            echo "android=false"
+            echo "windows=false"
+            echo "mediakit=false"
+          } >> "$GITHUB_OUTPUT"
+          if grep -Eq '^(lib/.*\.dart|tool/.*\.dart)$' "$RUNNER_TEMP/changed-files"; then echo "dart=true" >> "$GITHUB_OUTPUT"; fi
+          if grep -Eq '^(android/|pubspec\.yaml$|pubspec\.lock$)' "$RUNNER_TEMP/changed-files"; then echo "android=true" >> "$GITHUB_OUTPUT"; fi
+          if grep -Eq '^(windows/)' "$RUNNER_TEMP/changed-files"; then echo "windows=true" >> "$GITHUB_OUTPUT"; fi
+          if grep -Eq '^(packages/media_kit_libs_android_video_patched/|dev/scripts/build_android_media_kit_libraries\.sh$|dev/scripts/patches/libmpv-android-subtitle-decoders\.patch$)' "$RUNNER_TEMP/changed-files"; then echo "mediakit=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Validate MediaKit changes
+        if: steps.changed.outputs.mediakit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x dev/scripts/build_android_media_kit_libraries.sh
+          test -s dev/scripts/patches/libmpv-android-subtitle-decoders.patch
+          bash -n dev/scripts/build_android_media_kit_libraries.sh
+          test -f packages/media_kit_libs_android_video_patched/pubspec.yaml
+          test -f packages/media_kit_libs_android_video_patched/android/build.gradle
+          echo "MediaKit targeted validation passed."
+
+      - name: Setup Flutter for changed Dart or Android dependency files
+        if: steps.changed.outputs.dart == 'true' || steps.changed.outputs.android == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+          channel: stable
+
+      - name: Validate Flutter dependencies
+        if: steps.changed.outputs.dart == 'true' || steps.changed.outputs.android == 'true'
+        run: flutter pub get
+
+      - name: Analyze only changed Dart files
+        if: steps.changed.outputs.dart == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t dart_files < <(grep -E '^(lib/.*\.dart|tool/.*\.dart)$' "$RUNNER_TEMP/changed-files" | while IFS= read -r f; do [[ -f "$f" ]] && printf '%s\n' "$f"; done)
+          if [[ ${#dart_files[@]} -eq 0 ]]; then exit 0; fi
+          dart analyze --no-fatal-warnings "${dart_files[@]}"
+
+      - name: Validate Windows changes
+        if: steps.changed.outputs.windows == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d windows
+          echo "Windows platform tree present."

@@ -28,11 +28,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # Runtime Siri Remote tuning. The tvOS engine supplies the native input
-  # plugin; this package exposes its thresholds to Dart and is inert elsewhere.
-  flutter_tvos: 1.1.2
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -103,62 +98,10 @@ dependencies:
   # which stopped being a primitive-equality type and now fails constant
   # evaluation at build time (analyzer is clean, the kernel snapshot is not).
   google_fonts: ^8.2.1
-
-  # --- Apple TV (tvOS) federated implementations ---
-  # A tvOS build only loads plugins that declare a `tvos:` platform key, so
-  # each plugin with native Apple code needs its sibling here or the call
-  # throws MissingPluginException at runtime (it still COMPILES without them,
-  # which is the trap). Inert on Android/iOS/desktop — the endorsed
-  # implementation for those platforms is unchanged.
-  #
-  # NOTE: every one of these is 0.0.x — the tvOS plugin ecosystem is pre-alpha.
-  # Treat their behaviour as unverified until exercised on a real Apple TV.
-  # media_kit on Apple TV. Neither of these exists on pub.dev — media_kit has
-  # no tvOS support at all, so both are local packages under packages/.
-  #   libs  = libmpv + ffmpeg xcframeworks (the binaries are gitignored;
-  #           re-fetch with its fetch_frameworks.sh)
-  #   video = the texture renderer, scaffolded by `flutter-tvos plugin port`
-  # Without the libs package media_kit is silently dropped from the tvOS build
-  # and every playback call throws MissingPluginException at runtime.
-  media_kit_libs_tvos_video:
-    path: packages/media_kit_libs_tvos_video
-  media_kit_video_tvos:
-    path: packages/media_kit_video_tvos
-
-  connectivity_plus_tvos: ^0.0.2
-  # device_info_plus_tvos is ABSENT for the same reason as package_info: it
-  # wants device_info_plus_platform_interface ^8.1.0 while the plugin ships
-  # ^7.x. We never call device_info directly (it arrives via pug_flutter), so
-  # nothing of ours depends on it working.
-  #
-  # package_info_plus_tvos is deliberately ABSENT: it requires
-  # package_info_plus_platform_interface ^4.1.0, which NO published
-  # package_info_plus uses (10.2.1, the latest, still pins ^3.2.1) — so it
-  # cannot resolve against any real version of the plugin it implements.
-  # Runner/AppDelegate.swift implements package_info_plus's tiny `getAll`
-  # method-channel contract directly from Bundle.main instead. Revisit when
-  # the package catches up.
-  path_provider_tvos: ^0.0.3
-  shared_preferences_tvos: ^0.0.2
-  sqflite_tvos: ^0.0.2
-  video_player_tvos: ^0.0.1
-  wakelock_plus_tvos: ^0.0.1
   animations: ^2.0.11
   provider: ^6.1.2
   youtube_explode_dart: ^3.1.0
   visibility_detector: ^0.4.0+2
-
-# media_kit is vendored under packages/media_kit_patched for Apple TV support:
-# an already-resolved NativeLibrary initialization guard, safe NativeCallable
-# ownership during disposal, and off-main-isolate libmpv destruction. Without
-# these, tvOS playback either cannot start or can deadlock/abort during player
-# teardown. Diff the package before upgrading from the 1.2.0 base.
-# path_provider_tvos is vendored under packages/path_provider_tvos_patched with
-# ONE change: getApplicationSupportDirectory returns a Caches subdirectory
-# instead of nil. Upstream is technically right (Application Support cannot be
-# created on tvOS) but nil breaks every dependency that asks for it and has no
-# tvOS fallback — flutter_cache_manager, google_fonts, background_downloader.
-# Everything else is stock 0.0.3 — diff it before upgrading.
 dependency_overrides:
   # Engine-owned Android database handles; see the package PATCHES.md.
   sqflite_android:
@@ -173,14 +116,6 @@ dependency_overrides:
   # subtitle decoders. Release CI fills this package with a pinned patch build.
   media_kit_libs_android_video:
     path: packages/media_kit_libs_android_video_patched
-  # The hosted macOS FFmpeg binary omits Blu-ray PGS and several other common
-  # subtitle decoders. This local package keeps MediaKit's framework layout but
-  # receives a minimally patched, pinned upstream build in macOS release CI.
-  media_kit_libs_macos_video:
-    path: packages/media_kit_libs_macos_video_patched
-  path_provider_tvos:
-    path: packages/path_provider_tvos_patched
-
 dev_dependencies:
   file: ^7.0.1
   flutter_test:
@@ -199,20 +134,10 @@ dev_dependencies:
 flutter_launcher_icons:
   image_path: assets/app_icon.png
   android: true
-  ios: true
   remove_alpha_ios: true
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: assets/app_icon_foreground.png
-  macos:
-    generate: true
-    image_path: assets/app_icon.png
   windows:
-    generate: true
-    image_path: assets/app_icon.png
-  linux:
-    generate: true
-    image_path: assets/app_icon.png
-  web:
     generate: true
     image_path: assets/app_icon.png
 
