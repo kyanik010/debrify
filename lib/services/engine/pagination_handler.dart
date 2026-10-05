@@ -1,4 +1,4 @@
-import 'package:debrify/models/engine_config/engine_config.dart';
+import 'package:eagle_x/models/engine_config/engine_config.dart';
 
 /// Manages pagination state and logic for different pagination types.
 ///
