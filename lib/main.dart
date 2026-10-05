@@ -1866,12 +1866,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
 
     // Initialize deep link service for magnet links
     _initializeDeepLinking();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeAutoCheckForUpdates();
-    });
-
-    _scheduleSupportCampaignPrompt();
   }
 
   Future<void> _loadProfilePolicy() async {
@@ -2452,7 +2446,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
         return FocusTraversalGroup(
           child: AlertDialog(
             backgroundColor: theme.colorScheme.surface,
-            title: const Text('Update available'),
+            title: const Text('Eagle X update available'),
             content: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
               child: Column(
@@ -2587,7 +2581,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
         fileName: asset.name.isNotEmpty
             ? asset.name
             : 'Debrify-${release.versionLabel}.apk',
-        subDir: 'Debrify/Updates',
+        subDir: 'Eagle X/Updates',
         mimeType: mime,
       );
     } catch (_) {
