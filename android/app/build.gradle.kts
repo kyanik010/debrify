@@ -78,8 +78,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false // diagnostic: isolate release-build slowdown from R8
-            isShrinkResources = providers.gradleProperty("debrifySkipR8").orNull != "true"
+            isMinifyEnabled = true
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
