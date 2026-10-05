@@ -1,4 +1,5 @@
 name: Build Android APK - IPTV Loading Fix
+# Clean rebuild trigger for IPTV VOD direct-open fix.
 
 on:
   push:
