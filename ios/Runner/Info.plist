@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>debrify</string>
+	<string>eagle-x</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -28,7 +28,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>com.debrify.app.stremio</string>
+			<string>com.eaglex.app.stremio</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>stremio</string>
@@ -38,7 +38,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>com.debrify.app.magnet</string>
+			<string>com.eaglex.app.magnet</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>magnet</string>
@@ -48,7 +48,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>com.debrify.app.debrify</string>
+			<string>com.eaglex.app.eaglex</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>debrify</string>
@@ -71,7 +71,7 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Debrify connects to WebDAV servers and companion devices on your local network.</string>
+	<string>Eagle X connects to WebDAV servers and companion devices on your local network.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
