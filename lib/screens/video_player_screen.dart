@@ -8653,10 +8653,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
 
     void maybeCommit() {
-      // Width alone can be parsed from container metadata before a decoder has
-      // produced anything. Requiring the media clock to advance as well keeps
-      // metadata-only and permanently-buffering candidates behind the gate.
-      if (!armed || videoWidth <= 0 || position <= Duration.zero) return;
+      // IPTV VOD can expose valid decoder dimensions before the media clock
+      // advances. Keep the normal position gate for every non-IPTV source;
+      // only IPTV-owned VOD is allowed to commit on decoder evidence.
+      final isIptvVod =
+          source != null &&
+          IptvSourceSearch.owns(source) &&
+          (_effectiveContentType == 'movie' || _effectiveContentType == 'series');
+      if (!armed || videoWidth <= 0) return;
+      if (!isIptvVod && position <= Duration.zero) return;
       if (StartupStreamPolicy.isLikelyAioStreamsErrorSlate(
         addonId: source?.stremioAddonId,
         sourceName: source?.source,
