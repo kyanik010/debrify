@@ -57,12 +57,12 @@ android {
     }
 
     defaultConfig {
-        applicationId = if (isPersonalBuild.get()) "com.debrify.app.personal" else "com.debrify.app"
+        applicationId = if (isPersonalBuild.get()) "com.eaglex.app.personal" else "com.eaglex.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        resValue("string", "app_name", if (isPersonalBuild.get()) "Debrify Personal" else "Debrify")
+        resValue("string", "app_name", if (isPersonalBuild.get()) "Eagle X Personal" else "Eagle X")
     }
 
     signingConfigs {
