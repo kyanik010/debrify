@@ -8622,6 +8622,35 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     int attempt = 1,
     int maxAttempts = 1,
   }) async {
+    // Xtream/M3U VOD uses the same direct HTTP media path as live IPTV.
+    // Do not require the VOD startup gate's decoded-position heuristic here:
+    // some IPTV VOD endpoints expose metadata before the position clock
+    // advances, which can reject a stream that the normal IPTV player opens.
+    final isIptvDirect = IptvSourceSearch.owns(source);
+    if (isIptvDirect) {
+      final stopwatch = Stopwatch()..start();
+      final sourceFields = _startupSourceFields(sourceIndex, source);
+      try {
+        await _openMedia(
+          mk.Media(url, httpHeaders: httpHeaders),
+          play: true,
+        );
+        debugPrint(
+          '[StartupFailover] event=candidate_result platform=flutter '
+          '$sourceFields ok=true reason=iptv_direct_open '
+          'elapsedMs=${stopwatch.elapsedMilliseconds}',
+        );
+        return true;
+      } catch (error) {
+        debugPrint(
+          '[StartupFailover] event=open_exception platform=flutter '
+          '$sourceFields exception=${error.runtimeType} '
+          'reason=iptv_direct_open',
+        );
+        return false;
+      }
+    }
+
     final stopwatch = Stopwatch()..start();
     final completer = Completer<bool>();
     var armed = false;
