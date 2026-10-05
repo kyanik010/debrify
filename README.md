@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/app_icon.png" alt="Debrify" width="120" height="120">
+  <img src="assets/app_icon.png" alt="Eagle X" width="120" height="120">
 </p>
 
-<h1 align="center">Debrify</h1>
+<h1 align="center">Eagle X</h1>
 
 <p align="center">
   <strong>Your personal media hub</strong><br>
@@ -10,16 +10,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/varunsalian/debrify/releases"><img src="https://img.shields.io/github/v/release/varunsalian/debrify?style=flat-square&color=6366f1" alt="Release"></a>
-  <a href="https://github.com/varunsalian/debrify/stargazers"><img src="https://img.shields.io/github/stars/varunsalian/debrify?style=flat-square&color=f59e0b" alt="Stars"></a>
-  <a href="https://github.com/varunsalian/debrify/releases"><img src="https://img.shields.io/github/downloads/varunsalian/debrify/total?style=flat-square&color=22c55e" alt="Downloads"></a>
+  <a href="https://github.com/kyanik010/debrify/releases"><img src="https://img.shields.io/github/v/release/kyanik010/debrify?style=flat-square&color=6366f1" alt="Release"></a>
+  <a href="https://github.com/kyanik010/debrify/stargazers"><img src="https://img.shields.io/github/stars/kyanik010/debrify?style=flat-square&color=f59e0b" alt="Stars"></a>
+  <a href="https://github.com/kyanik010/debrify/releases"><img src="https://img.shields.io/github/downloads/kyanik010/debrify/total?style=flat-square&color=22c55e" alt="Downloads"></a>
   <img src="https://img.shields.io/badge/Flutter-3.8+-02569B?style=flat-square&logo=flutter&logoColor=white" alt="Flutter">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square" alt="GNU AGPL v3"></a>
 </p>
 
 <p align="center">
-  <a href="https://debrify.tv/"><strong>Website</strong></a> &bull;
-  <a href="https://github.com/varunsalian/debrify/releases"><strong>Download</strong></a> &bull;
+  <a href="https://eagle-x.app/"><strong>Website</strong></a> &bull;
+  <a href="https://github.com/kyanik010/debrify/releases"><strong>Download</strong></a> &bull;
   <a href="#-features">Features</a> &bull;
   <a href="#-supported-platforms">Platforms</a> &bull;
   <a href="https://www.reddit.com/r/debrify/">Reddit</a> &bull;
@@ -28,19 +28,19 @@
 
 ---
 
-## What is Debrify?
+## What is Eagle X?
 
-Debrify is an open-source, cross-platform **media hub**. It brings the services you already use — cloud storage accounts, personal WebDAV servers, IPTV playlists, Stremio addon catalogs, YouTube — into one place, with a **built-in player** tuned for movies and TV, a **download manager**, **Trakt/Simkl/MDBList tracking**, and a **cinematic UI** that works just as well on a phone, a desktop, or a TV with a remote.
+Eagle X is an open-source, cross-platform **media hub**. It brings the services you already use — cloud storage accounts, personal WebDAV servers, IPTV playlists, Stremio addon catalogs, YouTube — into one place, with a **built-in player** tuned for movies and TV, a **download manager**, **Trakt/Simkl/MDBList tracking**, and a **cinematic UI** that works just as well on a phone, a desktop, or a TV with a remote.
 
-You connect your own accounts and sources. Debrify gives them one library, one player, and one interface everywhere.
+You connect your own accounts and sources. Eagle X gives them one library, one player, and one interface everywhere.
 
 ## Responsible Use
 
-Debrify does not host, sell, provide, or bundle media content. Search sources, addons, indexers, WebDAV servers, IPTV playlists, and cloud accounts are user-configured integrations. Only use Debrify with content, services, and sources that you own, created, licensed, or are otherwise authorized to access.
+Eagle X does not host, sell, provide, or bundle media content. Search sources, addons, indexers, WebDAV servers, IPTV playlists, and cloud accounts are user-configured integrations. Only use Eagle X with content, services, and sources that you own, created, licensed, or are otherwise authorized to access.
 
-Third-party plugins, addons, indexers, playlists, and services are controlled by their respective providers or users. Debrify does not endorse using any integration to infringe copyright or violate a provider's terms. Do not submit or distribute configurations intended to facilitate unauthorized access to copyrighted content.
+Third-party plugins, addons, indexers, playlists, and services are controlled by their respective providers or users. Eagle X does not endorse using any integration to infringe copyright or violate a provider's terms. Do not submit or distribute configurations intended to facilitate unauthorized access to copyrighted content.
 
-For more detail, see [Content Responsibility](https://debrify.tv/content-responsibility/).
+For more detail, see [Content Responsibility](https://eagle-x.app/content-responsibility/).
 
 ---
 
@@ -75,7 +75,7 @@ Connect the storage and streaming-cache accounts you already pay for — Real-De
 ### 📡 Live & Lean-Back TV
 - **IPTV** — M3U and Xtream playlists with an EPG guide, catchup, DVR recording, favorites, categories, and playlists that scale to tens of thousands of channels
 - **Stremio TV** — browse catalogs as live channels with a cinematic tuner
-- **Debrify TV** — build your own always-on channels from keyword recipes and your connected accounts
+- **Eagle X TV** — build your own always-on channels from keyword recipes and your connected accounts
 
 ### 📈 Tracking
 - **Trakt** — in-player scrobbling, a live Now Playing card, continue-watching rails, and an upcoming-episodes calendar
@@ -113,26 +113,26 @@ One codebase, full feature support across all platforms.
 
 | Platform | Download | Notes |
 |:---------|:---------|:------|
-| **Android** | [APK](https://github.com/varunsalian/debrify/releases) | Phones and tablets |
-| **Android TV** | [APK](https://github.com/varunsalian/debrify/releases) | Full D-pad navigation and remote support |
-| **Windows** | [Installer](https://github.com/varunsalian/debrify/releases) | Windows 10/11 |
-| **macOS** | [DMG](https://github.com/varunsalian/debrify/releases) | Intel and Apple Silicon |
-| **Linux** | [AppImage](https://github.com/varunsalian/debrify/releases) | x86_64 and ARM64. Requires dependencies ([see install notes](#linux)) |
-| **iOS** | [IPA](https://github.com/varunsalian/debrify/releases) | Unsigned — requires sideloading ([guide](docs/iOS-Installation.md)) |
-| **Apple TV** | [IPA](https://github.com/varunsalian/debrify/releases) | Unsigned tvOS build — requires sideloading; ships with alpha releases |
+| **Android** | [APK](https://github.com/kyanik010/debrify/releases) | Phones and tablets |
+| **Android TV** | [APK](https://github.com/kyanik010/debrify/releases) | Full D-pad navigation and remote support |
+| **Windows** | [Installer](https://github.com/kyanik010/debrify/releases) | Windows 10/11 |
+| **macOS** | [DMG](https://github.com/kyanik010/debrify/releases) | Intel and Apple Silicon |
+| **Linux** | [AppImage](https://github.com/kyanik010/debrify/releases) | x86_64 and ARM64. Requires dependencies ([see install notes](#linux)) |
+| **iOS** | [IPA](https://github.com/kyanik010/debrify/releases) | Unsigned — requires sideloading ([guide](docs/iOS-Installation.md)) |
+| **Apple TV** | [IPA](https://github.com/kyanik010/debrify/releases) | Unsigned tvOS build — requires sideloading; ships with alpha releases |
 
 ---
 
 ## 🚀 Installation
 
 ### Android / Android TV
-Download the APK from [Releases](https://github.com/varunsalian/debrify/releases) and install. On TV, use a file manager app like Downloader or install via ADB.
+Download the APK from [Releases](https://github.com/kyanik010/debrify/releases) and install. On TV, use a file manager app like Downloader or install via ADB.
 
 ### Windows
 Download the installer, run it, and launch from the Start Menu. First run may trigger SmartScreen — click "More info" → "Run anyway".
 
 ### macOS
-Download the DMG, drag Debrify to Applications. First launch: right-click → Open (app is not notarized).
+Download the DMG, drag Eagle X to Applications. First launch: right-click → Open (app is not notarized).
 
 ### Linux
 ```bash
@@ -161,9 +161,9 @@ Download the unsigned IPA and sideload using **AltStore** or **Sideloadly**. See
 
 ---
 
-## ❤️ Support Debrify
+## ❤️ Support Eagle X
 
-Debrify is free, open source, and built by one person. If it has been useful to you, you can help fund development:
+Eagle X is free, open source, and built by one person. If it has been useful to you, you can help fund development:
 
 - [Sponsor on GitHub](https://github.com/sponsors/varunsalian)
 
@@ -175,7 +175,7 @@ Every bit helps keep the app improving.
 
 A warning: this is not a clean codebase.
 
-Debrify grew rapidly around features rather than a planned architecture. It contains enormous files, god classes, static state, duplicated provider logic, tightly coupled UI and business logic, inconsistent abstractions, legacy implementations, and more special cases than anyone should be proud of.
+Eagle X grew rapidly around features rather than a planned architecture. It contains enormous files, god classes, static state, duplicated provider logic, tightly coupled UI and business logic, inconsistent abstractions, legacy implementations, and more special cases than anyone should be proud of.
 
 Some newer subsystems are better structured and heavily tested, but the repository as a whole does not represent Flutter best practices. It represents a product that kept growing while architectural cleanup repeatedly lost to the next feature or platform problem.
 
@@ -184,7 +184,7 @@ The application works and solves difficult problems, but maintaining it can be p
 ## 🛠️ Building from Source
 
 ```bash
-git clone https://github.com/varunsalian/debrify.git
+git clone https://github.com/kyanik010/debrify.git
 cd debrify
 flutter pub get
 flutter run
@@ -215,7 +215,7 @@ flutter build linux --release            # Linux
 
 - **Reddit** — [r/debrify](https://www.reddit.com/r/debrify/) for discussion and tips
 - **Discord** — [Join the server](https://discord.gg/xuAc4Q2c9G) for help and updates
-- **Issues** — [Report bugs](https://github.com/varunsalian/debrify/issues) or request features
+- **Issues** — [Report bugs](https://github.com/kyanik010/debrify/issues) or request features
 
 ---
 
@@ -223,15 +223,15 @@ flutter build linux --release            # Linux
 
 Copyright © 2025–2026 Varun Salian and contributors.
 
-Debrify's original source code is free software licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`). If you distribute a modified or unmodified build, you must comply with the AGPL, including its corresponding-source requirements. Modified network-accessible versions must also offer their corresponding source to users.
+Eagle X's original source code is free software licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`). If you distribute a modified or unmodified build, you must comply with the AGPL, including its corresponding-source requirements. Modified network-accessible versions must also offer their corresponding source to users.
 
-Third-party components and assets remain under their respective licenses. The AGPL does not grant permission to use the Debrify name, logo, or other project branding for modified or unofficial distributions; see the [Trademark Policy](TRADEMARKS.md).
+Third-party components and assets remain under their respective licenses. The AGPL does not grant permission to use the Eagle X name, logo, or other project branding for modified or unofficial distributions; see the [Trademark Policy](TRADEMARKS.md).
 
 ---
 
 <p align="center">
-  <a href="https://debrify.tv/">
-    <img src="https://img.shields.io/badge/Visit_Website-debrify.tv-6366f1?style=for-the-badge" alt="Website">
+  <a href="https://eagle-x.app/">
+    <img src="https://img.shields.io/badge/Visit_Website-eagle-x.app-6366f1?style=for-the-badge" alt="Website">
   </a>
 </p>
 
