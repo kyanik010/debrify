@@ -243,6 +243,8 @@ flutter:
     - assets/images/tmdb-logo.png
     - assets/images/profile_avatars/
     - assets/splash_logo.png
+    - assets/images/eagle_x_activation_logo.png
+    - assets/images/eagle_x_support_qr.png
     - assets/config/app_remote_config.json
     - assets/config/engines/
 
