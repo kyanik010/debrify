@@ -6595,9 +6595,42 @@ class IptvResultsViewState extends State<IptvResultsView>
   /// Phones keep it (no embedded preview there), and TV/desktop fall back to
   /// it when the canvas can't fit two panes.
   Widget _buildClassic() {
+    final xtream = _selectedPlaylist?.isXtreamCodes ?? false;
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final contentLabel = switch (_selectedContentType) {
+      'vod' => isArabic ? 'الأفلام' : 'Movies',
+      'series' => isArabic ? 'المسلسلات' : 'Series',
+      _ => isArabic ? 'القنوات' : 'Channels',
+    };
+
     return Column(
       children: [
-        // Filters bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  contentLabel,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+              if (_selectedPlaylist != null)
+                Text(
+                  _isLoading
+                      ? (isArabic ? 'جاري التحميل…' : 'Loading…')
+                      : _filteredChannels.length.toString(),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+        ),
         IptvFiltersBar(
           playlists: _playlists,
           selectedPlaylist: _selectedPlaylist,
@@ -6612,7 +6645,7 @@ class IptvResultsViewState extends State<IptvResultsView>
           onAddPlaylist: _navigateToSettings,
           playlistFocusNode: _playlistFilterFocusNode,
           categoryFocusNode: _categoryFilterFocusNode,
-          showContentTypeFilter: _selectedPlaylist?.isXtreamCodes ?? false,
+          showContentTypeFilter: false,
           selectedContentType: _selectedContentType,
           onContentTypeChanged: _onContentTypeChanged,
           contentTypeFocusNode: _contentTypeFocusNode,
@@ -6624,10 +6657,65 @@ class IptvResultsViewState extends State<IptvResultsView>
               ? _promptCategoryOptions
               : null,
         ),
-
-        // Content
+        if (xtream) _buildSimpleContentTypeTabs(isArabic),
+        const SizedBox(height: 2),
         Expanded(child: _buildContent()),
       ],
+    );
+  }
+
+  Widget _buildSimpleContentTypeTabs(bool isArabic) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Widget tab({
+      required String value,
+      required IconData icon,
+      required String label,
+    }) {
+      final selected = _selectedContentType == value;
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: ChoiceChip(
+            selected: selected,
+            avatar: Icon(icon, size: 18),
+            label: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+            selectedColor: colorScheme.primaryContainer,
+            backgroundColor: colorScheme.surfaceContainerHighest,
+            labelStyle: TextStyle(
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              color: selected
+                  ? colorScheme.onPrimaryContainer
+                  : colorScheme.onSurfaceVariant,
+            ),
+            side: BorderSide(
+              color: selected ? colorScheme.primary : colorScheme.outlineVariant,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            showCheckmark: false,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            onSelected: (_) => _onContentTypeChanged(value),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+      child: Row(
+        children: [
+          tab(value: 'live', icon: Icons.live_tv_rounded, label: isArabic ? 'القنوات' : 'Channels'),
+          tab(value: 'vod', icon: Icons.movie_rounded, label: isArabic ? 'الأفلام' : 'Movies'),
+          tab(value: 'series', icon: Icons.tv_rounded, label: isArabic ? 'المسلسلات' : 'Series'),
+        ],
+      ),
     );
   }
 

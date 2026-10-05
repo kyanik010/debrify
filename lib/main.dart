@@ -3064,108 +3064,13 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     bool? simklAuthenticated,
     bool? mdblistAuthenticated,
   }) {
-    final trakt = traktAuthenticated ?? _traktAuthenticated;
-    final simkl = simklAuthenticated ?? _simklAuthenticated;
-    final mdblist = mdblistAuthenticated ?? _mdblistAuthenticated;
-    // The Calendar tab shows for any connected tracker; the MDBList service
-    // returns false while its rollout flag is disabled.
-    final calendar = trakt || simkl || mdblist;
-    if (_isAndroidTv) {
-      final rd = hasRealDebrid ?? _hasRealDebridKey;
-      final rdHidden = realDebridHidden ?? _rdHiddenFromNav;
-      final tb = hasTorbox ?? _hasTorboxKey;
-      final tbHidden = torboxHidden ?? _tbHiddenFromNav;
-      final pikpak = pikpakEnabled ?? _pikpakEnabled;
-      final ppHidden = pikpakHidden ?? _pikpakHiddenFromNav;
-      final webDav = webDavEnabled ?? _webDavEnabled;
-      final wdHidden = webDavHidden ?? _webDavHiddenFromNav;
-      final premiumize = premiumizeEnabled ?? _premiumizeEnabled;
-      final pmHidden = premiumizeHidden ?? _premiumizeHiddenFromNav;
-      final allDebrid = allDebridEnabled ?? _allDebridEnabled;
-      final adHidden = allDebridHidden ?? _allDebridHiddenFromNav;
-      final indices = <int>[
-        MainTab.search,
-        MainTab.home,
-        MainTab.discover,
-        MainTab.downloads,
-        MainTab.iptv,
-        MainTab.youtube,
-        MainTab.debrifyTv,
-        MainTab.stremioTv,
-      ]; // Search, Home, Discover, Downloads, IPTV, YouTube,
-      // Debrify TV, Stremio TV. The dedicated Search tab (17) is no longer
-      // TV-only — every non-TV layout WIDE enough for a sidebar carries it
-      // too (see the phone gate where nonTvIndices is built). The Home board
-      // (15) keeps its own persistent search bar regardless; the tab is an
-      // additional way in, not a replacement.
-      // Consolidated Cloud tab: one entry when ANY provider is enabled & not
-      // hidden (replaces the former per-provider RD/Torbox/PikPak/Premiumize/
-      // AllDebrid/WebDAV tabs). The in-tab hub lists the available providers.
-      if ((rd && !rdHidden) ||
-          (tb && !tbHidden) ||
-          (pikpak && !ppHidden) ||
-          (premiumize && !pmHidden) ||
-          (allDebrid && !adHidden) ||
-          (webDav && !wdHidden)) {
-        indices.add(MainTab.cloud);
-      }
-      indices.add(MainTab.addons);
-      indices.add(MainTab.settings);
-      _insertTraktCalendarTab(indices, calendar);
-      return _applyProfilePolicy(indices);
-    }
-
-    final rd = hasRealDebrid ?? _hasRealDebridKey;
-    final rdHidden = realDebridHidden ?? _rdHiddenFromNav;
-    final tb = hasTorbox ?? _hasTorboxKey;
-    final tbHidden = torboxHidden ?? _tbHiddenFromNav;
-    final pikpak = pikpakEnabled ?? _pikpakEnabled;
-    final ppHidden = pikpakHidden ?? _pikpakHiddenFromNav;
-    final webDav = webDavEnabled ?? _webDavEnabled;
-    final wdHidden = webDavHidden ?? _webDavHiddenFromNav;
-    final premiumize = premiumizeEnabled ?? _premiumizeEnabled;
-    final pmHidden = premiumizeHidden ?? _premiumizeHiddenFromNav;
-    final allDebrid = allDebridEnabled ?? _allDebridEnabled;
-    final adHidden = allDebridHidden ?? _allDebridHiddenFromNav;
-    if (!rd && !tb && !pikpak && !webDav && !premiumize && !allDebrid) {
-      final indices = <int>[
-        MainTab.search,
-        MainTab.home,
-        MainTab.discover,
-        MainTab.iptv,
-        MainTab.youtube,
-        MainTab.stremioTv,
-        MainTab.addons,
-        MainTab.settings,
-      ]; // Search, Home, Discover, IPTV, YouTube, Stremio TV, Addons, Settings
-      _insertTraktCalendarTab(indices, calendar);
-      return _applyProfilePolicy(indices);
-    }
-
-    final indices = <int>[
-      MainTab.search,
-      MainTab.home,
-      MainTab.discover,
-      MainTab.downloads,
+    // IPTV-only edition: hide non-IPTV destinations from navigation without
+    // deleting integrations, player code, subtitle sources, external audio,
+    // credentials, or settings. Existing IPTV flows remain untouched.
+    return _applyProfilePolicy([
       MainTab.iptv,
-      MainTab.youtube,
-      MainTab.debrifyTv,
-      MainTab.stremioTv,
-    ];
-    // Consolidated Cloud tab (see TV branch above): one entry when any provider
-    // is enabled & not hidden.
-    if ((rd && !rdHidden) ||
-        (tb && !tbHidden) ||
-        (pikpak && !ppHidden) ||
-        (premiumize && !pmHidden) ||
-        (allDebrid && !adHidden) ||
-        (webDav && !wdHidden)) {
-      indices.add(MainTab.cloud);
-    }
-    indices.add(MainTab.addons);
-    indices.add(MainTab.settings);
-    _insertTraktCalendarTab(indices, calendar);
-    return _applyProfilePolicy(indices);
+      MainTab.settings,
+    ]);
   }
 
   /// Group label for the desktop sidebar, keyed by screen index (the index
