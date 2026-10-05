@@ -8627,7 +8627,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // Do not require the VOD startup gate's decoded-position heuristic here:
     // some IPTV VOD endpoints expose metadata before the position clock
     // advances, which can reject a stream that the normal IPTV player opens.
-    final isIptvDirect = IptvSourceSearch.owns(source);
+    final isIptvDirect = source != null && IptvSourceSearch.owns(source);
     if (isIptvDirect) {
       final stopwatch = Stopwatch()..start();
       final sourceFields = _startupSourceFields(sourceIndex, source);
