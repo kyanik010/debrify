@@ -78,8 +78,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = providers.gradleProperty("debrifySkipR8").orNull != "true"
+            isShrinkResources = providers.gradleProperty("debrifySkipR8").orNull != "true"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
