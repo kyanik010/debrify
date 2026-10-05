@@ -54,6 +54,7 @@ import '../services/movie_metadata_service.dart';
 import '../models/iptv_playlist.dart';
 import '../services/stremio_iptv_service.dart';
 import '../services/iptv_epg_service.dart';
+import '../services/iptv_source_search.dart';
 import '../models/playlist_view_mode.dart';
 import '../models/series_playlist.dart';
 import '../services/torbox_service.dart';
