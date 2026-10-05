@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://eagle-x.app/"><strong>Website</strong></a> &bull;
+  <a href="https://github.com/kyanik010/debrify/"><strong>Website</strong></a> &bull;
   <a href="https://github.com/kyanik010/debrify/releases"><strong>Download</strong></a> &bull;
   <a href="#-features">Features</a> &bull;
   <a href="#-supported-platforms">Platforms</a> &bull;
@@ -40,7 +40,7 @@ Eagle X does not host, sell, provide, or bundle media content. Search sources, a
 
 Third-party plugins, addons, indexers, playlists, and services are controlled by their respective providers or users. Eagle X does not endorse using any integration to infringe copyright or violate a provider's terms. Do not submit or distribute configurations intended to facilitate unauthorized access to copyrighted content.
 
-For more detail, see [Content Responsibility](https://eagle-x.app/content-responsibility/).
+For more detail, see [Content Responsibility](https://github.com/kyanik010/debrify/content-responsibility/).
 
 ---
 
@@ -230,8 +230,8 @@ Third-party components and assets remain under their respective licenses. The AG
 ---
 
 <p align="center">
-  <a href="https://eagle-x.app/">
-    <img src="https://img.shields.io/badge/Visit_Website-eagle-x.app-6366f1?style=for-the-badge" alt="Website">
+  <a href="https://github.com/kyanik010/debrify/">
+    <img src="https://img.shields.io/badge/Visit_Website-github.com/kyanik010/debrify-6366f1?style=for-the-badge" alt="Website">
   </a>
 </p>
 
