@@ -1,164 +1,33 @@
-import java.util.Properties
-import java.io.FileInputStream
-import com.android.build.api.artifact.SingleArtifact
-import javax.xml.parsers.DocumentBuilderFactory
-import javax.xml.transform.TransformerFactory
-import javax.xml.transform.dom.DOMSource
-import javax.xml.transform.stream.StreamResult
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
-
-// Load keystore properties
-val keystorePropertiesFile = rootProject.file("key.properties")
-val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-}
-
-// Opt-in identity used by tool/build_personal.sh. Normal builds are unchanged.
-val isPersonalBuild = providers.gradleProperty("debrifyPersonalBuild")
-    .map(String::toBoolean)
-    .orElse(false)
 
 android {
     namespace = "com.debrify.app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
-
-    // Flutter 3.44 flipped the packaging default to extractNativeLibs=false,
-    // which stores the .so files uncompressed. That is Google's recommendation
-    // — mmap'd straight from the APK, so LESS space on the device and a faster
-    // start — but it nearly doubles the DOWNLOAD (85MB -> 160MB universal),
-    // and Debrify ships its APK by hand through GitHub, where the download is
-    // the number users see. Keep the pre-upgrade behaviour until that trade is
-    // deliberately made; the alternative worth considering is --split-per-abi.
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
-    }
-
+    ndkVersion = flutter.ndkVersion
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
-    testOptions {
-        unitTests.isIncludeAndroidResources = true
-    }
-
+    kotlinOptions { jvmTarget = JavaVersion.VERSION_11.toString() }
     defaultConfig {
-        applicationId = if (isPersonalBuild.get()) "com.debrify.app.personal" else "com.debrify.app"
+        applicationId = "com.debrify.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        resValue("string", "app_name", if (isPersonalBuild.get()) "Debrify Personal" else "Debrify")
     }
-
-    signingConfigs {
-        create("release") {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-            }
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
 
-flutter {
-    source = "../.."
-}
-
-// Keep Flutter's build type in release mode: setting isDebuggable above makes
-// Flutter select its debug engine. Only transform the packaged manifest for
-// an explicitly opted-in local build, allowing adb run-as with release AOT.
-abstract class LocalDiagnosticsManifest : DefaultTask() {
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.NONE)
-    abstract val inputManifest: RegularFileProperty
-
-    @get:OutputFile
-    abstract val outputManifest: RegularFileProperty
-
-    @TaskAction
-    fun enableUsbDiagnostics() {
-        val factory = DocumentBuilderFactory.newInstance()
-        factory.isNamespaceAware = true
-        val document = factory.newDocumentBuilder().parse(inputManifest.get().asFile)
-        val application = document.getElementsByTagName("application").item(0) as org.w3c.dom.Element
-        application.setAttributeNS("http://schemas.android.com/apk/res/android", "android:debuggable", "true")
-        val output = outputManifest.get().asFile
-        output.parentFile.mkdirs()
-        TransformerFactory.newInstance().newTransformer().transform(DOMSource(document), StreamResult(output))
-    }
-}
-
-androidComponents {
-    onVariants(selector().withBuildType("release")) { variant ->
-        if (providers.gradleProperty("debrifyLocalDiagnostics").orNull == "true") {
-            val localManifest = tasks.register<LocalDiagnosticsManifest>("${variant.name}LocalDiagnosticsManifest")
-            variant.artifacts.use(localManifest)
-                .wiredWithFiles(LocalDiagnosticsManifest::inputManifest, LocalDiagnosticsManifest::outputManifest)
-                .toTransform(SingleArtifact.MERGED_MANIFEST)
-        }
-    }
-}
-
-dependencies {
-    // JVM unit tests (subtitle auto-sync aligner) — run via :app:testDebugUnitTest
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20180813")
-    testImplementation("org.robolectric:robolectric:4.15.1")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
-    testImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.media3:media3-exoplayer:1.8.0")
-    implementation("androidx.media3:media3-datasource-okhttp:1.8.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("androidx.media3:media3-exoplayer-dash:1.8.0")
-    // HLS for IPTV (.m3u8) — DefaultMediaSourceFactory finds it by reflection.
-    // Was only present transitively via the video_player plugin; pin it so the
-    // native players don't silently lose HLS if that plugin ever goes away.
-    implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
-    implementation("androidx.media3:media3-ui:1.8.0")
-    implementation("androidx.media3:media3-session:1.8.0")
-    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.8.0+1")
-
-    // Glide for image loading
-    implementation("com.github.bumptech.glide:glide:4.16.0")
-    implementation("com.caverock:androidsvg-aar:1.4")
-
-    // SAF tree handling for the custom download-folder feature
-    implementation("androidx.documentfile:documentfile:1.0.1")
-}
+flutter { source = "../.." }
