@@ -26,7 +26,7 @@ val isPersonalBuild = providers.gradleProperty("debrifyPersonalBuild")
     .orElse(false)
 
 android {
-    namespace = "com.eaglex.app"
+    namespace = "com.debrify.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
