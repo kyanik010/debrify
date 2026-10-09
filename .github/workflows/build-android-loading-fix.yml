@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [arabic-localization-full]
   push:
-    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign]
+    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-onboarding-flow]
   workflow_dispatch:
 
 permissions:

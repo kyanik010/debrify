@@ -29,6 +29,7 @@ import 'screens/premiumize/premiumize_files_screen.dart';
 import 'screens/alldebrid/alldebrid_files_screen.dart';
 import 'screens/webdav/webdav_files_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/settings/iptv_settings_page.dart';
 import 'screens/settings/profiles_settings_page.dart';
 import 'screens/settings/widgets/settings_widgets.dart' show pushSettingsPage;
 import 'screens/profiles/profile_gate.dart';
@@ -1356,6 +1357,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
   int _selectedIndex = MainPageBridge.hasPendingIptvStartup
       ? MainTab.iptv
       : MainTab.home;
+  bool _didCheckInitialIptvSetup = false;
 
   // Phone nav chrome: 'classic' (bottom bar, default) vs 'floating' (the
   // glass button). Nothing renders until the pref is read — a one-frame
@@ -1601,6 +1603,9 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_ensureIptvSubscription());
+    });
     unawaited(_loadProfilePolicy());
     // Active-surface signal: the initializer above picked the boot tab before
     // any tap could, so system-bar ownership needs it published explicitly.
@@ -1872,6 +1877,36 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     });
 
     _scheduleSupportCampaignPrompt();
+  }
+
+  /// First-run IPTV onboarding: after profile selection, require the customer
+  /// to add a working Xtream Codes or M3U source before entering the catalog.
+  /// The existing settings form performs validation and persists credentials.
+  Future<void> _ensureIptvSubscription() async {
+    if (_didCheckInitialIptvSetup) return;
+    _didCheckInitialIptvSetup = true;
+    if (!ProfileRuntime.isProfileCommitted ||
+        !ProfilePolicyGuard.allowsSync(ProfileFeature.iptv)) {
+      return;
+    }
+
+    try {
+      final playlists = await StorageService.getIptvPlaylists(
+        forSettings: false,
+      );
+      if (!mounted || playlists.isNotEmpty) return;
+      final added = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) => const IptvSettingsPage(
+            openAddSource: true,
+            onboarding: true,
+          ),
+        ),
+      );
+      if (mounted && added == true) _onItemTapped(MainTab.iptv);
+    } catch (error) {
+      debugPrint('Initial IPTV setup could not be checked (${error.runtimeType})');
+    }
   }
 
   Future<void> _loadProfilePolicy() async {

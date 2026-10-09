@@ -59,7 +59,11 @@ enum _PhoneSection {
 }
 
 class IptvSettingsPage extends StatefulWidget {
-  const IptvSettingsPage({super.key, this.openAddSource = false});
+  const IptvSettingsPage({
+    super.key,
+    this.openAddSource = false,
+    this.onboarding = false,
+  });
 
   @visibleForTesting
   static bool showsAppearance({
@@ -72,6 +76,9 @@ class IptvSettingsPage extends StatefulWidget {
   /// The wide layout opens its Add pane (see [IptvSettingsTwoPane]); the
   /// single column already puts Add Playlist first, so it needs nothing.
   final bool openAddSource;
+
+  /// When true, a successful first subscription returns to the IPTV home tab.
+  final bool onboarding;
 
   @override
   State<IptvSettingsPage> createState() => _IptvSettingsPageState();
@@ -809,6 +816,11 @@ class _IptvSettingsPageState extends State<IptvSettingsPage>
     });
     _ensureFocusNodes();
 
+    if (widget.onboarding) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
     _showSnackBar(
       // DB-catalog mode returns an ingest receipt with empty channels — the
       // count lives on the receipt.
@@ -1054,6 +1066,11 @@ class _IptvSettingsPageState extends State<IptvSettingsPage>
       _isXcAdding = false;
     });
     _ensureFocusNodes();
+
+    if (widget.onboarding) {
+      Navigator.of(context).pop(true);
+      return;
+    }
 
     // Build status message
     String statusMsg = 'Added Xtream Codes login';
