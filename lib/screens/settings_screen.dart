@@ -7732,48 +7732,32 @@ class _SettingsLayout extends StatelessWidget {
       (PlatformUtil.isDesktop && MediaQuery.sizeOf(context).width >= 600);
 
   Widget _buildSpotlight(BuildContext context) {
-    final attention = _providerConnections.where(
-      settingsConnectionNeedsAttention,
-    );
-    final attentionCount = attention.length;
-    final readyCount = _providerConnections
-        .where(settingsConnectionIsReady)
-        .length;
-    final firstAttention = attention.isEmpty ? null : attention.first;
-    final summaryTone = attentionCount == 0
-        ? SettingsSummaryTone.good
-        : SettingsSummaryTone.attention;
-    final summaryTitle = attentionCount > 0
-        ? '$attentionCount connection${attentionCount == 1 ? '' : 's'} need attention.'
-        : readyCount > 0
-        ? 'Everything connected looks ready.'
-        : 'Connect a playback service.';
-    final summarySubtitle = attentionCount > 0
-        ? '${firstAttention!.title} reports ${firstAttention.status.toLowerCase()}. '
-              'Review it before your next playback.'
-        : readyCount > 0
-        ? '$readyCount services are configured on this device.'
-        : 'Add a debrid, cloud, or IPTV service to get started.';
-    final summaryTarget = firstAttention ?? _providerConnections.first;
+    // Eagle X is IPTV-first: hide the general Connections, Trackers and
+    // Metadata destinations without deleting their implementations or
+    // changing the IPTV, playback, or subtitle settings underneath.
+    final visibleCategories = _kAdaptiveSettingsCategories
+        .asMap()
+        .entries
+        .where(
+          (entry) => !const {'Connections', 'Trackers', 'Metadata'}
+              .contains(entry.value.label),
+        )
+        .toList(growable: false);
+
     return SettingsSpotlightShell(
-      categories: _kAdaptiveSettingsCategories,
+      categories: [
+        for (final entry in visibleCategories) entry.value,
+      ],
       onOpenSearch: onOpenSearch,
-      compactSummary: SettingsSpotlightSummaryCard(
-        eyebrow: attentionCount > 0 ? 'Connection check' : 'Service health',
-        title: summaryTitle,
-        subtitle: summarySubtitle,
-        actionLabel: attentionCount > 0
-            ? 'Review ${summaryTarget.title}'
-            : readyCount > 0
-            ? 'Manage connections'
-            : 'Connect a service',
-        tone: summaryTone,
-        onTap: () => unawaited(summaryTarget.onTap()),
+      // The summary is a Connections shortcut, so keep it hidden along with
+      // that category rather than leaving "Manage connections" on the hub.
+      compactSummary: null,
+      categoryBuilder: (context, visibleIndex) => _buildSpotlightCategory(
+        context,
+        visibleCategories[visibleIndex].key,
       ),
-      categoryBuilder: _buildSpotlightCategory,
     );
   }
-
   Widget _buildConnectionGrid(
     BuildContext context,
     List<ConnectionInfo> items, {
