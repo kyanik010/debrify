@@ -520,7 +520,7 @@ class _MigrationUpdateScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 30),
                   const Text(
-                    'Finishing the update…',
+                    'Preparing your library…',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -530,8 +530,8 @@ class _MigrationUpdateScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Debrify is upgrading your library for this new version. '
-                    'This launch can take up to 5 minutes on large setups — '
+                    'Your library is being prepared for use. '
+                    'This can take up to 5 minutes on large setups — '
                     'please don’t close the app or turn off the device. '
                     'This only happens once.',
                     textAlign: TextAlign.center,
