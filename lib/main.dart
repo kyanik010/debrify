@@ -73,7 +73,7 @@ import 'services/tvos_remote_tuning.dart';
 import 'services/simkl/simkl_service.dart';
 import 'services/trakt/trakt_service.dart';
 import 'services/mdblist/mdblist_service.dart';
-import 'widgets/app_initializer.dart';
+import 'screens/activation/activation_entry_screen.dart';
 
 import 'widgets/animated_background.dart';
 import 'services/main_page_bridge.dart';
@@ -1246,9 +1246,18 @@ class _DebrifyAppState extends State<DebrifyApp> {
       // the theme the app has always shipped (the construction moved verbatim
       // into theme/app_theme_adapter.dart, Text Brightness pass included).
       theme: AppThemeController.instance.themeData,
-      home: const ProfileGate(child: AppInitializer()),
+      home: const ActivationEntryScreen(
+        activatedBuilder: _buildActivatedIptvApp,
+      ),
     );
   }
+}
+
+Widget _buildActivatedIptvApp(BuildContext context) {
+  return const ProfileGate(
+    bypassPicker: true,
+    child: MainPage(),
+  );
 }
 
 class MainPage extends StatefulWidget {
@@ -1352,9 +1361,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
   // that owns the launch is the one that mounts. Resolved in main() before
   // runApp precisely so this initializer can read it; tab 13 is unconditional
   // in _computeVisibleNavIndices, so it can never be swallowed.
-  int _selectedIndex = MainPageBridge.hasPendingIptvStartup
-      ? MainTab.iptv
-      : MainTab.home;
+  int _selectedIndex = MainTab.iptv;
   bool _didCheckInitialIptvSetup = false;
 
   // Phone nav chrome: 'classic' (bottom bar, default) vs 'floating' (the
