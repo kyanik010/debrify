@@ -31,6 +31,7 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
 
   late final WebViewController _controller;
   String _deviceId = '';
+  String _deviceIdError = '';
   bool _pageReady = false;
   bool _checking = false;
   bool _activated = false;
@@ -63,38 +64,64 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
   }
 
   Future<void> _initialize() async {
-    _deviceId = await _resolveDeviceId();
-    if (!mounted) return;
     try {
+      final resolvedId = await _resolveDeviceId();
+      if (!mounted) return;
+      setState(() {
+        _deviceId = resolvedId;
+        _deviceIdError = '';
+      });
       await _controller.loadFlutterAsset('assets/eagle-x2-design-v4.html');
     } catch (_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {
+        _deviceId = '';
+        _deviceIdError =
+            'تعذّر قراءة معرّف الجهاز الثابت. أعد المحاولة قبل متابعة التفعيل.';
+      });
     }
   }
 
   Future<String> _resolveDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
     String? androidId;
+
     if (!kIsWeb && Platform.isAndroid) {
       try {
         androidId = await const MethodChannel('debrify/device')
             .invokeMethod<String>('id');
-      } catch (_) {}
+      } catch (_) {
+        // Use a previously persisted identifier only if one was generated
+        // successfully on this installation before the native read failed.
+      }
+
+      if (androidId != null && androidId.trim().isNotEmpty) {
+        // Keep the existing Eagle X identifier algorithm unchanged so that
+        // already-registered devices continue to match the control panel.
+        final digest = sha256.convert(
+          utf8.encode('streamvault-device:' + androidId.trim()),
+        );
+        final token = digest.bytes
+            .take(9)
+            .map((byte) => byte.toRadixString(16).padLeft(2, '0').toUpperCase())
+            .join();
+        final generated = 'EV-' + token;
+        await prefs.setString('eagle_x_device_identifier_v1', generated);
+        return generated;
+      }
+
+      final stored = prefs.getString('eagle_x_device_identifier_v1');
+      if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+
+      // Never invent a random ID on Android: it could bind the wrong device
+      // or create a different record in the admin panel.
+      throw StateError('Android device identifier unavailable');
     }
 
-    if (androidId != null && androidId.trim().isNotEmpty) {
-      final digest = sha256.convert(
-        utf8.encode('streamvault-device:' + androidId.trim()),
-      );
-      final token = digest.bytes
-          .take(9)
-          .map((byte) => byte.toRadixString(16).padLeft(2, '0').toUpperCase())
-          .join();
-      return 'EV-' + token;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
+    // Other supported platforms get a one-time persisted app-specific ID.
     final stored = prefs.getString('eagle_x_device_identifier_v1');
-    if (stored != null && stored.isNotEmpty) return stored;
+    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+
     final random = Random.secure();
     final seed = List<int>.generate(24, (_) => random.nextInt(256));
     final token = sha256.convert(seed).toString().substring(0, 18).toUpperCase();
@@ -242,6 +269,50 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
   @override
   Widget build(BuildContext context) {
     if (_activated) return widget.activatedBuilder(context);
+    if (_deviceIdError.isNotEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0B0F1A),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.phonelink_erase_outlined,
+                    color: Color(0xFFE6C982),
+                    size: 44,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'تعذّر تحديد معرّف الجهاز',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _deviceIdError,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFB9C0CC)),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: _initialize,
+                    child: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A),
       body: _deviceId.isEmpty
