@@ -1246,7 +1246,7 @@ class _DebrifyAppState extends State<DebrifyApp> {
       // the theme the app has always shipped (the construction moved verbatim
       // into theme/app_theme_adapter.dart, Text Brightness pass included).
       theme: AppThemeController.instance.themeData,
-      home: const ActivationEntryScreen(
+      home: ActivationEntryScreen(
         activatedBuilder: _buildActivatedIptvApp,
       ),
     );
