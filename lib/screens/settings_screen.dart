@@ -5803,7 +5803,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SnackBar(
           content: Text(
             looksLikeProfilePackage
-                ? 'This is a profile backup. Enable profiles or update to a build that supports profile restore.'
+                ? 'This is a profile backup. Profile backup restoration is unavailable in this app.'
                 : error.message,
           ),
         ),
