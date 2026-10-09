@@ -103,6 +103,7 @@ class IptvResultsView extends StatefulWidget {
   final String initialContentType;
   final String? initialPlaylistId;
   final bool hideContentTypeSelector;
+  final VoidCallback? onBackToHome;
   final Widget? searchHeader;
 
   /// Test hook fired only after a startup row has reached Spotlight's logical
@@ -120,6 +121,7 @@ class IptvResultsView extends StatefulWidget {
     this.initialContentType = 'live',
     this.initialPlaylistId,
     this.hideContentTypeSelector = false,
+    this.onBackToHome,
     this.onUpArrowFromFilters,
     this.searchHeader,
     this.debugOnSpotlightStartupFocus,
@@ -6626,6 +6628,12 @@ class IptvResultsViewState extends State<IptvResultsView>
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
           child: Row(
             children: [
+              if (widget.onBackToHome != null)
+                IconButton(
+                  tooltip: isArabic ? 'الرئيسية' : 'Home',
+                  onPressed: widget.onBackToHome,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
               Expanded(
                 child: Text(
                   contentLabel,
