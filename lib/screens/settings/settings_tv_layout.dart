@@ -75,13 +75,6 @@ class SettingsTvLayout extends StatefulWidget {
   final Future<void> Function()? onExportDiagnosticLogs;
   final Future<void> Function() onDangerAction;
   final String appVersion;
-  final Future<void> Function() onCheckForUpdates;
-  final String updateSubtitle;
-  final bool checkingUpdates;
-  final bool autoUpdateChecksEnabled;
-  final ValueChanged<bool> onToggleAutoUpdateChecks;
-  final bool includeAlphaUpdates;
-  final ValueChanged<bool> onToggleIncludeAlphaUpdates;
   final bool tvKeyboardEnabled;
   final ValueChanged<bool> onToggleTvKeyboard;
   // Appearance rows. Labels caption the rows; every picker is its own page.
@@ -191,13 +184,6 @@ class SettingsTvLayout extends StatefulWidget {
     this.onExportDiagnosticLogs,
     required this.onDangerAction,
     required this.appVersion,
-    required this.onCheckForUpdates,
-    required this.updateSubtitle,
-    required this.checkingUpdates,
-    required this.autoUpdateChecksEnabled,
-    required this.onToggleAutoUpdateChecks,
-    required this.includeAlphaUpdates,
-    required this.onToggleIncludeAlphaUpdates,
     required this.tvKeyboardEnabled,
     required this.onToggleTvKeyboard,
     required this.textBrightnessLabel,
