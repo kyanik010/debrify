@@ -46,7 +46,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
             page.where((channel) => _validArtworkUrl(channel.logoUrl))
                 .take(12 - destination.length),
           );
-          offset += page.length.toInt();
+          offset = (offset + page.length).toInt();
         }
       }
 
@@ -86,7 +86,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                 movieItems.add(channel);
               }
             }
-            offset += page.length.toInt();
+            offset = (offset + page.length).toInt();
           }
         }
         if (movieItems.length >= 12 && seriesItems.length >= 12) break;
