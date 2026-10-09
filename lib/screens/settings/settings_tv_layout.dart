@@ -385,13 +385,6 @@ const List<_Category> _kCategories = [
     'Manage stored state and keep a portable copy of your setup.',
   ),
   _Category(
-    Icons.info_outline_rounded,
-    'About',
-    'Updates, version & community',
-    'Debrify, up to date.',
-    'Version, release checks, and the places where the community meets.',
-  ),
-  _Category(
     Icons.warning_amber_rounded,
     'Danger Zone',
     'Reset Debrify',
@@ -1399,82 +1392,7 @@ class _SettingsTvLayoutState extends State<SettingsTvLayout> {
             ],
           ];
         }
-      case 15: // About (Updates + Support merged — matches the phone layout)
-        {
-          // The donation row is conditional, so index the pane nodes off a
-          // running counter to keep Up/Down wiring contiguous.
-          int p = 0;
-          return [
-            const SettingsSectionLabel('Updates'),
-            SettingsSection(
-              title: '',
-              children: [
-                SettingsToggleTile.spec(
-                  SettingsRows.autoUpdate,
-                  value: widget.autoUpdateChecksEnabled,
-                  onChanged: widget.onToggleAutoUpdateChecks,
-                  focusNode: _paneNodes[p++],
-                ),
-                SettingsToggleTile.spec(
-                  SettingsRows.includeAlphaUpdates,
-                  value: widget.includeAlphaUpdates,
-                  onChanged: widget.onToggleIncludeAlphaUpdates,
-                  focusNode: _paneNodes[p++],
-                ),
-                SettingsTile.spec(
-                  SettingsRows.checkUpdates,
-                  subtitle: widget.updateSubtitle,
-                  onTap: widget.onCheckForUpdates,
-                  tag: 'New',
-                  focusNode: _paneNodes[p++],
-                  trailing: widget.checkingUpdates
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2.5),
-                        )
-                      : null,
-                ),
-                const TmdbAttribution(),
-                SettingsInfoTile.spec(
-                  SettingsRows.version,
-                  value: widget.appVersion,
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const SettingsSectionLabel('Community & Support'),
-            SettingsSection(
-              title: '',
-              children: [
-                if (widget.showSupportDonation)
-                  SettingsTile(
-                    icon: SettingsRows.supportDebrify.icon,
-                    title: widget.supportDonationLabel,
-                    subtitle: widget.supportDonationSubtitle,
-                    onTap: widget.onOpenSupportDonation,
-                    focusNode: _paneNodes[p++],
-                  ),
-                SettingsTile.spec(
-                  SettingsRows.reddit,
-                  onTap: () => launchSettingsUrl(SettingsRows.reddit.url!),
-                  focusNode: _paneNodes[p++],
-                ),
-                SettingsTile.spec(
-                  SettingsRows.discord,
-                  onTap: () => launchSettingsUrl(SettingsRows.discord.url!),
-                  focusNode: _paneNodes[p++],
-                ),
-                SettingsTile.spec(
-                  SettingsRows.github,
-                  onTap: () => launchSettingsUrl(SettingsRows.github.url!),
-                  focusNode: _paneNodes[p++],
-                ),
-              ],
-            ),
-          ];
-        }
-      case 16: // Danger Zone
+      case 15: // Danger Zone
         return [
           SettingsSection(
             title: '',
