@@ -210,11 +210,16 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
   @override
   Widget build(BuildContext context) {
     if (_activated) return widget.activatedBuilder(context);
-    return const Scaffold(
-      backgroundColor: Color(0xFF0B0F1A),
-      body: SizedBox.expand(
-        child: WebViewWidgetPlaceholder(),
-      ),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0F1A),
+      body: _deviceId.isEmpty
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFE6C982),
+                strokeWidth: 2.5,
+              ),
+            )
+          : WebViewWidget(controller: _controller),
     );
   }
 
@@ -224,16 +229,3 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
   }
 }
 
-class WebViewWidgetPlaceholder extends StatelessWidget {
-  const WebViewWidgetPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: Color(0xFFE6C982),
-        strokeWidth: 2.5,
-      ),
-    );
-  }
-}
