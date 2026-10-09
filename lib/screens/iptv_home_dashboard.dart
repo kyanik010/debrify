@@ -46,7 +46,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
             page.where((channel) => _validArtworkUrl(channel.logoUrl))
                 .take(12 - destination.length),
           );
-          offset += page.length;
+          offset += page.length.toInt();
         }
       }
 
@@ -86,7 +86,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                 movieItems.add(channel);
               }
             }
-            offset += page.length;
+            offset += page.length.toInt();
           }
         }
         if (movieItems.length >= 12 && seriesItems.length >= 12) break;
@@ -227,7 +227,9 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     return uri != null &&
         (uri.scheme == 'https' || uri.scheme == 'http') &&
         uri.host.isNotEmpty;
-  }\n\n  Widget fallbackPoster() => Container(color: const Color(0xFF131B2E), alignment: Alignment.center, child: const Icon(Icons.movie_outlined, color: muted, size: 24));
+  }
+
+  Widget fallbackPoster() => Container(color: const Color(0xFF131B2E), alignment: Alignment.center, child: const Icon(Icons.movie_outlined, color: muted, size: 24));
 
   static const sections = <_Section>[
     _Section('channels', 'القنوات', 'القنوات وتصنيفات المصدر', Icons.live_tv_rounded, Color(0xFF3B82F6)),
