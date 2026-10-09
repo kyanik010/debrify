@@ -981,7 +981,10 @@ class IptvResultsViewState extends State<IptvResultsView>
     // empty one is where they go to fill it.
     final continueWatching = await StorageService.getIptvContinueWatching();
     final hasContinue = continueWatching.isNotEmpty;
-    if (hasFavorites || customLists.isNotEmpty || playlists.isNotEmpty) {
+    if (hasFavorites ||
+        widget.initialPlaylistId == 'iptv-favorites' ||
+        customLists.isNotEmpty ||
+        playlists.isNotEmpty) {
       playlists = [
         _favoritesPlaylist,
         if (hasContinue) _continuePlaylist,
