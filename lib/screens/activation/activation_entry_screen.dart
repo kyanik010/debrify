@@ -11,8 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../models/iptv_playlist.dart';
-import '../../services/storage_service.dart';
 import '../../services/iptv_service.dart';
+import '../../services/storage_service.dart';
 import '../../services/xtream_codes_service.dart';
 
 class ActivationEntryScreen extends StatefulWidget {
@@ -68,9 +68,7 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
     try {
       await _controller.loadFlutterAsset('assets/eagle-x2-design-v4.html');
     } catch (_) {
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     }
   }
 
@@ -84,7 +82,9 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
     }
 
     if (androidId != null && androidId.trim().isNotEmpty) {
-      final digest = sha256.convert(utf8.encode('streamvault-device:' + androidId.trim()));
+      final digest = sha256.convert(
+        utf8.encode('streamvault-device:' + androidId.trim()),
+      );
       final token = digest.bytes
           .take(9)
           .map((byte) => byte.toRadixString(16).padLeft(2, '0').toUpperCase())
@@ -107,8 +107,8 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
     if (!_pageReady) return;
     try {
       await _controller.runJavaScript(
-        'window.setDeviceId(${jsonEncode(_deviceId)});'
-        'window.setActivationState(${jsonEncode(status)}, ${jsonEncode(message)});',
+        'window.setDeviceId(\${jsonEncode(_deviceId)});'
+        'window.setActivationState(\${jsonEncode(status)}, \${jsonEncode(message)});',
       );
     } catch (_) {}
   }
@@ -192,43 +192,11 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
       throw const FormatException('Incomplete M3U IPTV source');
     }
 
-    final serverUrl = isXtream ? host.replaceAll(RegExp(r'/+
-    final existing = await StorageService.getIptvPlaylists(forSettings: true);
-    final updated = <IptvPlaylist>[
-      for (final item in existing)
-        if (item.id != _managedPlaylistId) item,
-      playlist,
-    ];
-    await StorageService.setIptvPlaylistsAndReload(
-      updated,
-      forSettings: true,
-    );
-    await StorageService.setIptvDefaultPlaylist(_managedPlaylistId);
-  }
+    var serverUrl = isXtream ? host : '';
+    while (serverUrl.endsWith('/')) {
+      serverUrl = serverUrl.substring(0, serverUrl.length - 1);
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_activated) return widget.activatedBuilder(context);
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0F1A),
-      body: _deviceId.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFE6C982),
-                strokeWidth: 2.5,
-              ),
-            )
-          : WebViewWidget(controller: _controller),
-    );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-}
-
-), '') : '';
     if (isXtream) {
       final authentication = await XtreamCodesService.instance.authenticate(
         serverUrl,
@@ -292,4 +260,3 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
     super.dispose();
   }
 }
-
