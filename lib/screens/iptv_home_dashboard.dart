@@ -26,42 +26,111 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     unawaited(loadPosters());
   }
 
+  bool _posterLoadInFlight = false;
+  Timer? _posterRefreshTimer;
+
   Future<void> loadPosters() async {
+    if (_posterLoadInFlight) return;
+    _posterLoadInFlight = true;
     try {
       await IptvCatalogDb.open();
       final playlists = await StorageService.getIptvPlaylists(forSettings: false);
-      final movieItems = <IptvChannel>[], seriesItems = <IptvChannel>[];
-      for (final p in playlists) {
-        if (p.isVirtual || p.isLocalFile) continue;
-        if (p.isXtreamCodes) {
-          final mk = IptvCatalogKey.forPlaylist(p, 'vod');
-          final sk = IptvCatalogKey.forPlaylist(p, 'series');
-          if (mk != null) {
-            final snap = IptvCatalogDb.snapshot(mk);
-            if (snap != null) movieItems.addAll(snap.page(offset: 0, limit: 12, live: false).where((c) => (c.logoUrl ?? '').trim().isNotEmpty));
-          }
-          if (sk != null) {
-            final snap = IptvCatalogDb.snapshot(sk);
-            if (snap != null) seriesItems.addAll(snap.page(offset: 0, limit: 12, live: false).where((c) => (c.logoUrl ?? '').trim().isNotEmpty));
-          }
-        } else {
-          final key = IptvCatalogKey.forPlaylist(p, 'live');
-          if (key == null) continue;
-          final snap = IptvCatalogDb.snapshot(key);
-          if (snap == null) continue;
-          for (final c in snap.page(offset: 0, limit: 40, live: false)) {
-            if ((c.logoUrl ?? '').trim().isEmpty) continue;
-            if (c.contentType == 'series') seriesItems.add(c);
-            else if (c.contentType == 'vod' || (c.duration ?? 0) > 0) movieItems.add(c);
-          }
+      final movieItems = <IptvChannel>[];
+      final seriesItems = <IptvChannel>[];
+
+      // Walk the cached catalog in bounded pages until we have enough real
+      // artwork. Filtering only the first 12/40 rows could falsely show an
+      // empty shelf when early provider rows have no poster URL.
+      Future<void> collectXtream(
+        dynamic snapshot,
+        List<IptvChannel> destination,
+      ) async {
+        var offset = 0;
+        while (offset < snapshot.channelCount && destination.length < 12) {
+          final page = snapshot.page(offset: offset, limit: 100, live: false);
+          if (page.isEmpty) break;
+          destination.addAll(
+            page.where((channel) => (channel.logoUrl ?? '').trim().isNotEmpty)
+                .take(12 - destination.length),
+          );
+          offset += page.length;
         }
       }
+
+      for (final playlist in playlists) {
+        if (playlist.isVirtual || playlist.isLocalFile) continue;
+
+        if (playlist.isXtreamCodes) {
+          final movieKey = IptvCatalogKey.forPlaylist(playlist, 'vod');
+          final seriesKey = IptvCatalogKey.forPlaylist(playlist, 'series');
+
+          if (movieKey != null && movieItems.length < 12) {
+            final snapshot = IptvCatalogDb.snapshot(movieKey);
+            if (snapshot != null) await collectXtream(snapshot, movieItems);
+          }
+          if (seriesKey != null && seriesItems.length < 12) {
+            final snapshot = IptvCatalogDb.snapshot(seriesKey);
+            if (snapshot != null) await collectXtream(snapshot, seriesItems);
+          }
+        } else {
+          final key = IptvCatalogKey.forPlaylist(playlist, 'live');
+          if (key == null) continue;
+          final snapshot = IptvCatalogDb.snapshot(key);
+          if (snapshot == null) continue;
+
+          var offset = 0;
+          while (offset < snapshot.channelCount &&
+              (movieItems.length < 12 || seriesItems.length < 12)) {
+            final page = snapshot.page(offset: offset, limit: 100, live: false);
+            if (page.isEmpty) break;
+            for (final channel in page) {
+              if ((channel.logoUrl ?? '').trim().isEmpty) continue;
+              if (channel.contentType == 'series' && seriesItems.length < 12) {
+                seriesItems.add(channel);
+              } else if ((channel.contentType == 'vod' ||
+                      (channel.duration ?? 0) > 0) &&
+                  movieItems.length < 12) {
+                movieItems.add(channel);
+              }
+            }
+            offset += page.length;
+          }
+        }
+        if (movieItems.length >= 12 && seriesItems.length >= 12) break;
+      }
+
       if (!mounted) return;
-      setState(() { movies = movieItems.take(12).toList(); series = seriesItems.take(12).toList(); loading = false; });
-    } catch (e) {
-      debugPrint('IPTV dashboard posters unavailable: ' + e.runtimeType.toString());
+      setState(() {
+        movies = movieItems.take(12).toList();
+        series = seriesItems.take(12).toList();
+        loading = false;
+      });
+    } catch (error) {
+      debugPrint('IPTV dashboard posters unavailable: ${error.runtimeType}');
       if (mounted) setState(() => loading = false);
+    } finally {
+      _posterLoadInFlight = false;
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    MainPageBridge.homeBoardReady.value = true;
+    unawaited(loadPosters());
+    // IPTV catalog sync writes to the local database independently of this
+    // dashboard's lifecycle. Re-read cached rows periodically so posters that
+    // arrive after the dashboard first opens become visible without a restart.
+    _posterRefreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => unawaited(loadPosters()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _posterRefreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
