@@ -4,6 +4,7 @@ import '../models/iptv_playlist.dart';
 import '../services/iptv_catalog_db.dart';
 import '../services/iptv_catalog_key.dart';
 import '../services/storage_service.dart';
+import '../services/main_page_bridge.dart';
 
 class IptvHomeDashboard extends StatefulWidget {
   const IptvHomeDashboard({super.key, required this.onOpenSection});
@@ -19,7 +20,11 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   bool loading = true;
 
   @override
-  void initState() { super.initState(); unawaited(loadPosters()); }
+  void initState() {
+    super.initState();
+    MainPageBridge.homeBoardReady.value = true;
+    unawaited(loadPosters());
+  }
 
   Future<void> loadPosters() async {
     try {
