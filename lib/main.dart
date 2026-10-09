@@ -1357,11 +1357,8 @@ class _SupportCampaignDialogState extends State<_SupportCampaignDialog> {
 
 class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
 
-  // Home (the Stremio board; old index-0 Home retired) — unless a startup
-  // channel is pending, in which case boot straight to IPTV (13) so the page
-  // that owns the launch is the one that mounts. Resolved in main() before
-  // runApp precisely so this initializer can read it; tab 13 is unconditional
-  // in _computeVisibleNavIndices, so it can never be swallowed.
+  // Start on the Eagle Stream dashboard unless a startup channel is pending.
+  // In that case IPTV must mount first to own the requested playback launch.
   int _selectedIndex = MainPageBridge.hasPendingIptvStartup ? MainTab.iptv : MainTab.home;
   String _requestedIptvContentType = 'live';
   String? _requestedIptvPlaylistId;
@@ -2860,6 +2857,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
             initialContentType: _requestedIptvContentType,
             initialPlaylistId: _requestedIptvPlaylistId,
             hideContentTypeSelector: true,
+            onBackToHome: () => _onItemTapped(MainTab.home),
             searchQuery: args.query,
             isTelevision: args.isTelevision,
             onUpArrowFromFilters: args.onUpArrowToSearch,
