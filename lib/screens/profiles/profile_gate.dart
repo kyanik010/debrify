@@ -242,12 +242,10 @@ class _ProfileGateState extends State<ProfileGate> with WidgetsBindingObserver {
       activeAtStartup.firstOrNull,
       claimed: playbackReturnClaim,
     );
-    final activeStartupProfile = activeAtStartup.firstOrNull;
-    final canBypassPicker =
-        widget.bypassPicker &&
-        activeStartupProfile != null &&
-        !activeStartupProfile.hasPin &&
-        !activeStartupProfile.pinResetRequired;
+    // Eagle X managed-subscription customer flow does not use profiles.
+    // Bypass the profile picker on every activation-flow entry, including a
+    // clean install with no stored profile.
+    final canBypassPicker = widget.bypassPicker;
     setState(() {
       _profiles = profiles;
       _entered =
