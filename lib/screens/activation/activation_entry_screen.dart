@@ -107,8 +107,8 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
     if (!_pageReady) return;
     try {
       await _controller.runJavaScript(
-        'window.setDeviceId(\${jsonEncode(_deviceId)});'
-        'window.setActivationState(\${jsonEncode(status)}, \${jsonEncode(message)});',
+        'window.setDeviceId(${jsonEncode(_deviceId)});'
+        'window.setActivationState(${jsonEncode(status)}, ${jsonEncode(message)});',
       );
     } catch (_) {}
   }
