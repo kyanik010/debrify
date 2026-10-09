@@ -221,7 +221,13 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     ]),
   );
 
-  bool _validArtworkUrl(String? value) {\n    final raw = value?.trim() ?? '';\n    final uri = Uri.tryParse(raw);\n    return uri != null && (uri.scheme == 'https' || uri.scheme == 'http') && uri.host.isNotEmpty;\n  }\n\n  Widget fallbackPoster() => Container(color: const Color(0xFF131B2E), alignment: Alignment.center, child: const Icon(Icons.movie_outlined, color: muted, size: 24));
+  bool _validArtworkUrl(String? value) {
+    final raw = value?.trim() ?? '';
+    final uri = Uri.tryParse(raw);
+    return uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host.isNotEmpty;
+  }\n\n  Widget fallbackPoster() => Container(color: const Color(0xFF131B2E), alignment: Alignment.center, child: const Icon(Icons.movie_outlined, color: muted, size: 24));
 
   static const sections = <_Section>[
     _Section('channels', 'القنوات', 'القنوات وتصنيفات المصدر', Icons.live_tv_rounded, Color(0xFF3B82F6)),
