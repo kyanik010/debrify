@@ -2813,61 +2813,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
 
-      // Updates
-      SettingsSearchEntry(
-        icon: SettingsRows.autoUpdate.icon,
-        title: SettingsRows.autoUpdate.title,
-        subtitle: SettingsRows.autoUpdate.subtitle,
-        category: 'About',
-        keywords: const ['notify', 'releases', 'startup'],
-        toggleValue: () => _autoUpdateChecksEnabled,
-        onToggle: _toggleAutoUpdateChecks,
-      ),
-      SettingsSearchEntry(
-        icon: SettingsRows.includeAlphaUpdates.icon,
-        title: SettingsRows.includeAlphaUpdates.title,
-        subtitle: SettingsRows.includeAlphaUpdates.subtitle,
-        category: 'About',
-        keywords: const ['alpha', 'beta', 'prerelease', 'experimental'],
-        toggleValue: () => _includeAlphaUpdates,
-        onToggle: _toggleIncludeAlphaUpdates,
-      ),
-      nav(
-        SettingsRows.checkUpdates,
-        'About',
-        _checkForAppUpdates,
-        subtitle: _updateSubtitle,
-        keywords: const ['version', 'upgrade', 'github', 'new build'],
-      ),
-
-      // Support
-      if (_supportDonation.hasProviders)
-        SettingsSearchEntry(
-          icon: SettingsRows.supportDebrify.icon,
-          title: _supportSettingsLabel,
-          subtitle: _supportSettingsSubtitle,
-          category: 'About',
-          keywords: const ['donate', 'tip', 'contribute', 'fund'],
-          onTap: _openSupportDonation,
-        ),
-      nav(
-        SettingsRows.reddit,
-        'About',
-        () => launchSettingsUrl(SettingsRows.reddit.url!),
-        keywords: const ['community', 'subreddit'],
-      ),
-      nav(
-        SettingsRows.discord,
-        'About',
-        () => launchSettingsUrl(SettingsRows.discord.url!),
-        keywords: const ['community', 'chat', 'help'],
-      ),
-      nav(
-        SettingsRows.github,
-        'About',
-        () => launchSettingsUrl(SettingsRows.github.url!),
-        keywords: const ['source code', 'contribute', 'issues'],
-      ),
+      // App-update controls and the general About/community entries are
+      // intentionally omitted from the IPTV-focused settings search.
 
       // Danger Zone
       nav(
@@ -7739,8 +7686,12 @@ class _SettingsLayout extends StatelessWidget {
         .asMap()
         .entries
         .where(
-          (entry) => !const {'Connections', 'Trackers', 'Metadata'}
-              .contains(entry.value.label),
+          (entry) => !const {
+            'Connections',
+            'Trackers',
+            'Metadata',
+            'About',
+          }.contains(entry.value.label),
         )
         .toList(growable: false);
 
@@ -8530,61 +8481,8 @@ class _SettingsLayout extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                // About section
-                SettingsSection(
-                  title: 'About',
-                  children: [
-                    SettingsToggleTile.spec(
-                      SettingsRows.autoUpdate,
-                      value: autoUpdateChecksEnabled,
-                      onChanged: onToggleAutoUpdateChecks,
-                    ),
-                    SettingsToggleTile.spec(
-                      SettingsRows.includeAlphaUpdates,
-                      value: includeAlphaUpdates,
-                      onChanged: onToggleIncludeAlphaUpdates,
-                    ),
-                    SettingsTile.spec(
-                      SettingsRows.checkUpdates,
-                      subtitle: updateSubtitle,
-                      onTap: onCheckForUpdates,
-                      tag: 'New',
-                      trailing: checkingUpdates
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : null,
-                    ),
-                    if (showSupportDonation)
-                      SettingsTile(
-                        icon: SettingsRows.supportDebrify.icon,
-                        title: supportDonationLabel,
-                        subtitle: supportDonationSubtitle,
-                        onTap: onOpenSupportDonation,
-                      ),
-                    SettingsTile.spec(
-                      SettingsRows.reddit,
-                      onTap: () => launchSettingsUrl(SettingsRows.reddit.url!),
-                    ),
-                    SettingsTile.spec(
-                      SettingsRows.discord,
-                      onTap: () => launchSettingsUrl(SettingsRows.discord.url!),
-                    ),
-                    SettingsTile.spec(
-                      SettingsRows.github,
-                      onTap: () => launchSettingsUrl(SettingsRows.github.url!),
-                    ),
-                    const TmdbAttribution(),
-                    SettingsInfoTile.spec(
-                      SettingsRows.version,
-                      value: appVersion,
-                    ),
-                  ],
-                ),
+                // General About, version, community, and app-update controls
+                // are intentionally hidden in the IPTV-focused settings UI.
                 const SizedBox(height: 24),
                 // Danger Zone LAST — destructive actions live at the end of
                 // the page, isolated in their own red section on purpose.
