@@ -100,6 +100,9 @@ enum _ChipOwner { none, guide, maintenance, refresh }
 class IptvResultsView extends StatefulWidget {
   final String searchQuery;
   final bool isTelevision;
+  final String initialContentType;
+  final String? initialPlaylistId;
+  final bool hideContentTypeSelector;
   final Widget? searchHeader;
 
   /// Test hook fired only after a startup row has reached Spotlight's logical
@@ -114,6 +117,9 @@ class IptvResultsView extends StatefulWidget {
     super.key,
     required this.searchQuery,
     this.isTelevision = false,
+    this.initialContentType = 'live',
+    this.initialPlaylistId,
+    this.hideContentTypeSelector = false,
     this.onUpArrowFromFilters,
     this.searchHeader,
     this.debugOnSpotlightStartupFocus,
@@ -663,6 +669,7 @@ class IptvResultsViewState extends State<IptvResultsView>
   @override
   void initState() {
     super.initState();
+    _selectedContentType = widget.initialContentType;
     if (widget.isTelevision) {
       // Lifecycle observer completes the parked preview re-arm when the app
       // returns from the native player (see _playChannel); the sidebar
@@ -1020,6 +1027,15 @@ class IptvResultsViewState extends State<IptvResultsView>
       newSelectedPlaylist = _favoritesPlaylist;
     } else if (playlists.isNotEmpty) {
       newSelectedPlaylist = firstRealPlaylist ?? playlists.first;
+    }
+    final requestedPlaylistId = widget.initialPlaylistId;
+    if (requestedPlaylistId != null) {
+      for (final playlist in playlists) {
+        if (playlist.id == requestedPlaylistId) {
+          newSelectedPlaylist = playlist;
+          break;
+        }
+      }
     }
 
     // Check if playlist changed
@@ -5637,7 +5653,8 @@ class IptvResultsViewState extends State<IptvResultsView>
               : null,
         ),
       ),
-      contentTypeSlot: selected?.isXtreamCodes ?? false
+      contentTypeSlot: !widget.hideContentTypeSelector &&
+              (selected?.isXtreamCodes ?? false)
           ? _spotlightControlNavigation(
               SpotlightContentTypeControl(
                 dense: true,
@@ -6657,7 +6674,8 @@ class IptvResultsViewState extends State<IptvResultsView>
               ? _promptCategoryOptions
               : null,
         ),
-        if (xtream) _buildSimpleContentTypeTabs(isArabic),
+        if (xtream && !widget.hideContentTypeSelector)
+          _buildSimpleContentTypeTabs(isArabic),
         const SizedBox(height: 2),
         Expanded(child: _buildContent()),
       ],
