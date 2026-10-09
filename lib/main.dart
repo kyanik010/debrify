@@ -20,6 +20,7 @@ import 'services/app_route_observer.dart';
 import 'screens/browse_screen.dart';
 import 'screens/cloud_screen.dart';
 import 'screens/search_screen.dart';
+import 'screens/iptv_home_dashboard.dart';
 import 'widgets/iptv/iptv_results_view.dart';
 import 'widgets/youtube/youtube_results_view.dart';
 import 'screens/debrid_downloads_screen.dart';
@@ -1361,7 +1362,9 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
   // that owns the launch is the one that mounts. Resolved in main() before
   // runApp precisely so this initializer can read it; tab 13 is unconditional
   // in _computeVisibleNavIndices, so it can never be swallowed.
-  int _selectedIndex = MainTab.iptv;
+  int _selectedIndex = MainPageBridge.hasPendingIptvStartup ? MainTab.iptv : MainTab.home;
+  String _requestedIptvContentType = 'live';
+  String? _requestedIptvPlaylistId;
   bool _didCheckInitialIptvSetup = false;
 
   // Phone nav chrome: 'classic' (bottom bar, default) vs 'floating' (the
@@ -1904,7 +1907,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
           ),
         ),
       );
-      if (mounted && added == true) _onItemTapped(MainTab.iptv);
+      if (mounted && added == true) _onItemTapped(MainTab.home);
     } catch (error) {
       debugPrint('Initial IPTV setup could not be checked (${error.runtimeType})');
     }
@@ -2807,6 +2810,23 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
   List<int> _sidebarOrderedIndices(List<int> visibleIndices) =>
       _sidebarConfiguration.orderVisibleTabs(visibleIndices);
 
+  void _openEagleIptvSection(String section) {
+    if (section == 'settings') {
+      _onItemTapped(MainTab.settings);
+      return;
+    }
+    setState(() {
+      _requestedIptvContentType = switch (section) {
+        'vod' => 'vod',
+        'series' => 'series',
+        _ => 'live',
+      };
+      _requestedIptvPlaylistId =
+          section == 'favorites' ? 'iptv-favorites' : null;
+    });
+    _onItemTapped(MainTab.iptv);
+  }
+
   /// Resolve the widget for a nav index, routed through the tab-boundary
   /// factory: FROZEN destinations (see [AppSurfaces.tabs]) are wrapped in a
   /// [LegacyThemeBoundary] so they render today's look under any app theme;
@@ -2834,8 +2854,12 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
           submitOnly: true,
           isTelevision: _isAndroidTv,
           embedSearchHeaderInView: true,
+          hideSearchHeader: true,
           viewBuilder: (args) => IptvResultsView(
             key: args.resultKey,
+            initialContentType: _requestedIptvContentType,
+            initialPlaylistId: _requestedIptvPlaylistId,
+            hideContentTypeSelector: true,
             searchQuery: args.query,
             isTelevision: args.isTelevision,
             onUpArrowFromFilters: args.onUpArrowToSearch,
@@ -2856,8 +2880,8 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
             onUpArrowFromFilters: args.onUpArrowToSearch,
           ),
         );
-      case 15: // Home New (Stremio-style board)
-        return SearchScreen(isTelevision: _isAndroidTv);
+      case 15: // Eagle Stream IPTV dashboard
+        return IptvHomeDashboard(onOpenSection: _openEagleIptvSection);
       case 16: // Cloud (consolidated provider hub)
         return CloudScreen(isTelevision: _isAndroidTv);
       case 17: // Search (dedicated tab — TV + sidebar layouts)
@@ -3170,6 +3194,9 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     // every resize, so a lookup at any of those sites repeats an
     // inherited-widget walk on a hot path.
     final app = AppThemeScope.of(context);
+    final eagleIptvSurface = _selectedIndex == MainTab.home ||
+        _selectedIndex == MainTab.iptv ||
+        _selectedIndex == MainTab.settings;
 
     return Stack(
       children: [
@@ -3275,7 +3302,8 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
                             ),
                           ),
                         ),
-                        Positioned(
+                        if (!eagleIptvSurface)
+                          Positioned(
                           left: 0,
                           top: 0,
                           bottom: 0,
@@ -3466,6 +3494,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
                     : DesktopSidebarNav.width;
 
                 final classicBottomNav =
+                    !eagleIptvSurface &&
                     !isDesktopWide &&
                     _phoneNavLoaded &&
                     _phoneNavStyle == 'classic';
@@ -3569,7 +3598,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
-                      if (isDesktopWide && !desktopPill)
+                      if (isDesktopWide && !desktopPill && !eagleIptvSurface)
                         Positioned(
                           left: 0,
                           top: 0,
@@ -3603,7 +3632,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
                         ),
                       // Full-screen layer, but hit-testable only at the
                       // capsule while closed — see DesktopPillNav.
-                      if (desktopPill)
+                      if (desktopPill && !eagleIptvSurface)
                         Positioned.fill(
                           child: DesktopPillNav(
                             expanded: expandDesktopSidebar,
@@ -3632,7 +3661,8 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
                                       unawaited(_openProfilesFromNavigation()),
                           ),
                         ),
-                      if (!isDesktopWide &&
+                      if (!eagleIptvSurface &&
+                          !isDesktopWide &&
                           _phoneNavLoaded &&
                           _phoneNavStyle == 'floating')
                         MobileFloatingNav(
