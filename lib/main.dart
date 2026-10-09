@@ -114,7 +114,6 @@ import 'utils/platform_util.dart';
 import 'utils/tvos_device.dart';
 import 'services/desktop_recording_service.dart';
 import 'services/desktop_schedule_service.dart';
-import 'services/update_service.dart';
 import 'services/webdav_sync/webdav_sync_runtime.dart';
 
 /// Flutter's default image cache (1000 images / 100 MB) is far too large for a
@@ -1347,7 +1346,6 @@ class _SupportCampaignDialogState extends State<_SupportCampaignDialog> {
 }
 
 class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
-  static bool _didAutoUpdateCheck = false;
 
   // Home (the Stremio board; old index-0 Home retired) — unless a startup
   // channel is pending, in which case boot straight to IPTV (13) so the page
@@ -1486,13 +1484,10 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
   // Remote control state
   bool _remoteControlEnabled = true;
   UserProfile? _profilePolicy;
-  StreamSubscription<Map<String, dynamic>>? _autoUpdateDownloadSub;
-  String? _autoUpdateDownloadTaskId;
   bool _hasTrackedInitialTab = false;
   bool _didCheckSupportCampaign = false;
   bool _startupModalActive = false;
   bool _supportCampaignResolved = false;
-  bool _autoUpdateCheckResolved = false;
 
   /// True while a Cloud-hub provider route is on the stack, so a rapid re-tap or
   /// a duplicate deep link doesn't stack a second identical provider route.
@@ -1999,7 +1994,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     _tvSidebarExpanded.dispose();
     DeepLinkService().dispose();
     RemoteControlState().stop();
-    _autoUpdateDownloadSub?.cancel();
     super.dispose();
   }
 
@@ -2302,15 +2296,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     deepLinkService.initialize();
   }
 
-  void _maybeAutoCheckForUpdates() {
-    if (_didAutoUpdateCheck) return;
-    _didAutoUpdateCheck = true;
-    Future<void>.delayed(const Duration(seconds: 6), () async {
-      if (!mounted) return;
-      await _runDeferredAutoUpdateCheck();
-    });
-  }
-
   void _scheduleSupportCampaignPrompt() {
     if (_didCheckSupportCampaign) return;
     _didCheckSupportCampaign = true;
@@ -2341,29 +2326,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     Future<void>.delayed(const Duration(seconds: 3), () async {
       if (!mounted) return;
       await _runDeferredSupportCampaignPrompt();
-    });
-  }
-
-  Future<void> _runDeferredAutoUpdateCheck() async {
-    if (!mounted || _autoUpdateCheckResolved) return;
-    if (_startupModalActive) {
-      Future<void>.delayed(const Duration(seconds: 3), () async {
-        if (!mounted) return;
-        await _runDeferredAutoUpdateCheck();
-      });
-      return;
-    }
-
-    final completed = await _performAutoUpdateCheck();
-    if (completed) {
-      _autoUpdateCheckResolved = true;
-      return;
-    }
-
-    if (!mounted || _autoUpdateCheckResolved) return;
-    Future<void>.delayed(const Duration(seconds: 3), () async {
-      if (!mounted) return;
-      await _runDeferredAutoUpdateCheck();
     });
   }
 
@@ -2406,314 +2368,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     } finally {
       _startupModalActive = false;
     }
-  }
-
-  Future<bool> _performAutoUpdateCheck() async {
-    try {
-      if (!_allowsProfileFeature(ProfileFeature.appUpdates)) return true;
-      final autoEnabled = await StorageService.getUpdateAutoCheckEnabled();
-      if (!autoEnabled) return true;
-      final includeAlpha = await StorageService.getUpdateIncludeAlphaEnabled();
-      final packageInfo = await AppVersionInfo.get();
-      UpdateSummary summary;
-      try {
-        summary = await UpdateService.checkForUpdates(
-          currentVersion: packageInfo.version,
-          includePrereleases: includeAlpha,
-        );
-      } catch (_) {
-        return true;
-      }
-      if (!summary.updateAvailable) return true;
-      final ignored = await StorageService.getIgnoredUpdateVersion();
-      final releaseVersion = summary.release.versionLabel;
-      if (ignored != null &&
-          releaseVersion.isNotEmpty &&
-          ignored == releaseVersion) {
-        return true;
-      }
-      if (!mounted) return false;
-      if (_startupModalActive) {
-        Future<void>.delayed(const Duration(seconds: 3), () async {
-          if (!mounted) return;
-          await _runDeferredAutoUpdateCheck();
-        });
-        return false;
-      }
-      _startupModalActive = true;
-      try {
-        await _showAutoUpdateDialog(summary, packageInfo.version);
-        return true;
-      } finally {
-        _startupModalActive = false;
-      }
-    } catch (_) {
-      _startupModalActive = false;
-      // Ignore auto-update failures silently
-      return true;
-    }
-  }
-
-  Future<void> _showAutoUpdateDialog(
-    UpdateSummary summary,
-    String installedVersion,
-  ) async {
-    if (!mounted) return;
-    final release = summary.release;
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-    final notes = release.body.trim();
-    final bool isAndroidDevice = !kIsWeb && Platform.isAndroid;
-    final bool canInstallDirectly =
-        summary.updateAvailable &&
-        isAndroidDevice &&
-        release.androidApkAsset != null;
-    final String latestLabel = release.versionLabel.isNotEmpty
-        ? release.versionLabel
-        : 'Latest release';
-    final String? publishedLabel = release.publishedAt != null
-        ? DateFormat.yMMMd().format(release.publishedAt!.toLocal())
-        : null;
-    final markdownStyle = MarkdownStyleSheet.fromTheme(theme).copyWith(
-      h2: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-      p: textTheme.bodyMedium?.copyWith(height: 1.4),
-      strong: const TextStyle(fontWeight: FontWeight.w700),
-    );
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return FocusTraversalGroup(
-          child: AlertDialog(
-            backgroundColor: theme.colorScheme.surface,
-            title: const Text('Update available'),
-            content: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Installed: $installedVersion',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Latest: $latestLabel',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  if (publishedLabel != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Published $publishedLabel',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                  if (notes.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Release notes',
-                      style: textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 220),
-                      child: SingleChildScrollView(
-                        child: MarkdownBody(
-                          data: notes,
-                          selectable: true,
-                          styleSheet: markdownStyle,
-                          onTapLink: (text, href, title) {
-                            if (href == null) return;
-                            final uri = Uri.tryParse(href);
-                            if (uri != null) {
-                              launchUrl(
-                                uri,
-                                mode: LaunchMode.externalApplication,
-                              );
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              SizedBox(
-                width: 460,
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    TextButton(
-                      onPressed: () async {
-                        final navigator = Navigator.of(dialogContext);
-                        await StorageService.setIgnoredUpdateVersion(
-                          release.versionLabel,
-                        );
-                        navigator.pop();
-                      },
-                      child: const Text('Skip this release'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                      child: const Text('Later'),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        Navigator.of(dialogContext).pop();
-                        if (canInstallDirectly) {
-                          _startAutoUpdateDownload(release);
-                        } else {
-                          _openReleasesPage(release.htmlUrl);
-                        }
-                      },
-                      child: Text(
-                        canInstallDirectly ? 'Install update' : 'View release',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _startAutoUpdateDownload(AppRelease release) async {
-    if (kIsWeb || !Platform.isAndroid) {
-      await _openReleasesPage(release.htmlUrl);
-      return;
-    }
-    if (_autoUpdateDownloadTaskId != null) {
-      _showAutoUpdateSnack('An update download is already running.');
-      return;
-    }
-    final asset = release.androidApkAsset;
-    if (asset == null) {
-      _showAutoUpdateSnack(
-        'This release does not include an Android build yet.',
-      );
-      await _openReleasesPage(release.htmlUrl);
-      return;
-    }
-    final hasPermission = await _ensureInstallPermissionForUpdate();
-    if (!hasPermission) return;
-
-    const mime = 'application/vnd.android.package-archive';
-    String? taskId;
-    try {
-      taskId = await AndroidNativeDownloader.startUpdate(
-        url: asset.downloadUrl.toString(),
-        fileName: asset.name.isNotEmpty
-            ? asset.name
-            : 'Debrify-${release.versionLabel}.apk',
-        subDir: 'Debrify/Updates',
-        mimeType: mime,
-      );
-    } catch (_) {
-      taskId = null;
-    }
-
-    if (taskId == null) {
-      _showAutoUpdateSnack(
-        'Could not start the update download. Please try again later.',
-      );
-      return;
-    }
-
-    _autoUpdateDownloadTaskId = taskId;
-    _autoUpdateDownloadSub?.cancel();
-    _autoUpdateDownloadSub = AndroidNativeDownloader.events.listen((
-      event,
-    ) async {
-      final String eventTaskId = (event['taskId'] ?? '').toString();
-      if (eventTaskId != _autoUpdateDownloadTaskId) return;
-      final type = event['type']?.toString();
-      if (type == 'complete') {
-        final contentUri = (event['contentUri'] ?? '').toString();
-        final eventMime = (event['mimeType'] ?? '').toString().isNotEmpty
-            ? (event['mimeType'] ?? '').toString()
-            : mime;
-        try {
-          if (contentUri.isNotEmpty) {
-            final ok = await AndroidNativeDownloader.openContentUri(
-              contentUri,
-              eventMime,
-            );
-            if (!ok) {
-              _showAutoUpdateSnack('Installer opened from Downloads.');
-            }
-          }
-        } catch (_) {
-          _showAutoUpdateSnack(
-            'Could not open the installer. Check your Downloads app.',
-          );
-        } finally {
-          _clearAutoUpdateDownloadState();
-          _showAutoUpdateSnack('Update downloaded and ready to install.');
-        }
-      } else if (type == 'error' || type == 'canceled') {
-        _showAutoUpdateSnack('Update download did not finish.');
-        _clearAutoUpdateDownloadState();
-      }
-    });
-
-    _showAutoUpdateSnack(
-      'Downloading the update in the background. Watch notifications for progress.',
-    );
-  }
-
-  void _clearAutoUpdateDownloadState() {
-    _autoUpdateDownloadSub?.cancel();
-    _autoUpdateDownloadSub = null;
-    _autoUpdateDownloadTaskId = null;
-  }
-
-  Future<bool> _ensureInstallPermissionForUpdate() async {
-    if (kIsWeb || !Platform.isAndroid) return false;
-    final status = await Permission.requestInstallPackages.status;
-    if (status.isGranted) return true;
-    final result = await Permission.requestInstallPackages.request();
-    if (result.isGranted) return true;
-    if (result.isPermanentlyDenied || result.isRestricted) {
-      _showAutoUpdateSnack(
-        'Allow Debrify to install apps from system settings.',
-      );
-      unawaited(openAppSettings());
-    } else {
-      _showAutoUpdateSnack(
-        'Permission is required to install the downloaded update.',
-      );
-    }
-    return false;
-  }
-
-  Future<void> _openReleasesPage(Uri url) async {
-    final ok = await launchUrl(url, mode: LaunchMode.externalApplication);
-    if (!ok) {
-      _showAutoUpdateSnack('Unable to open the releases page right now.');
-    }
-  }
-
-  void _showAutoUpdateSnack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// Fallback handler for PikPak post-action when TorrentSearchScreen is not mounted
