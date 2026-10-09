@@ -74,7 +74,6 @@ class SettingsTvLayout extends StatefulWidget {
   final Future<void> Function() onOpenSyncAndMigrate;
   final Future<void> Function()? onExportDiagnosticLogs;
   final Future<void> Function() onDangerAction;
-  final String appVersion;
   final bool tvKeyboardEnabled;
   final ValueChanged<bool> onToggleTvKeyboard;
   // Appearance rows. Labels caption the rows; every picker is its own page.
@@ -183,7 +182,6 @@ class SettingsTvLayout extends StatefulWidget {
     required this.onOpenSyncAndMigrate,
     this.onExportDiagnosticLogs,
     required this.onDangerAction,
-    required this.appVersion,
     required this.tvKeyboardEnabled,
     required this.onToggleTvKeyboard,
     required this.textBrightnessLabel,
@@ -385,8 +383,7 @@ class _SettingsTvLayoutState extends State<SettingsTvLayout> {
   /// exactly 17 — Looks from the theme work, Profile Picker, Hero Artwork
   /// Quality from the player-dock merge, and Player Controls from the native
   /// OTT-skin work, less Details Theme (App Theme covers it) and Theme Lab
-  /// (a tool, not a setting); About has up to 6 with the conditional donation
-  /// row;
+  /// (a tool, not a setting); Data & Backup has up to 6 rows.
   /// Data & Backup up to 6). Connections and Trackers are sized from their
   /// own lists; see the pool computation in [initState].
   ///
