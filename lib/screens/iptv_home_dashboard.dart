@@ -14,8 +14,8 @@ class IptvHomeDashboard extends StatefulWidget {
 }
 
 class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
-  static const bg = Color(0xFF0A101D), surface = Color(0x99131B2E);
-  static const blue = Color(0xFF3B82F6), muted = Color(0xFF9CA3AF);
+  static const bg = Color(0xFF091A29), surface = Color(0xE6102A3D);
+  static const blue = Color(0xFF57CAFF), muted = Color(0xFF85A4BC);
   List<IptvChannel> movies = const [], series = const [];
   bool loading = true;
 
@@ -167,7 +167,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   Widget header({bool compact = false}) => Row(textDirection: TextDirection.rtl, children: [
     Container(width: compact ? 34 : 40, height: compact ? 34 : 40,
       decoration: BoxDecoration(color: blue.withOpacity(.12), shape: BoxShape.circle, border: Border.all(color: blue.withOpacity(.35))),
-      child: const Icon(Icons.flight_rounded, color: blue, size: 20)),
+      child: const Icon(Icons.play_circle_outline_rounded, color: blue, size: 20)),
     const SizedBox(width: 10),
     const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Eagle Stream', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
@@ -181,7 +181,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     return Container(width: double.infinity, clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(color: const Color(0xFF131B2E), borderRadius: BorderRadius.circular(16), border: Border.all(color: blue.withOpacity(.18))),
       child: Stack(fit: StackFit.expand, children: [
-        if (featured?.logoUrl != null) Image.network(featured!.logoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => artwork()) else artwork(),
+        if (_validArtworkUrl(featured?.logoUrl)) Image.network(featured!.logoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => artwork(), loadingBuilder: (context, child, progress) => progress == null ? child : artwork()) else artwork(),
         DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(.04), bg.withOpacity(.96)]))),
         Positioned(right: 14, left: 14, bottom: 12, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('EAGLE STREAM', style: TextStyle(color: Color(0xFF60A5FA), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
@@ -214,14 +214,14 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
           ? Container(alignment: Alignment.center, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(10)), child: const Text('لا توجد بوسترات متاحة من المصدر', style: TextStyle(color: muted, fontSize: 10)))
           : ListView.separated(scrollDirection: Axis.horizontal, itemCount: items.length, separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (_, i) => SizedBox(width: 96, child: InkWell(onTap: () => widget.onOpenSection(target), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.network(items[i].logoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallbackPoster()))),
+              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(10), child: _validArtworkUrl(items[i].logoUrl) ? Image.network(items[i].logoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallbackPoster(), loadingBuilder: (context, child, progress) => progress == null ? child : fallbackPoster()) : fallbackPoster())),
               const SizedBox(height: 4), Text(items[i].name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
             ]))),
           )),
     ]),
   );
 
-  Widget fallbackPoster() => Container(color: const Color(0xFF131B2E), alignment: Alignment.center, child: const Icon(Icons.movie_outlined, color: muted, size: 24));
+  bool _validArtworkUrl(String? value) {\n    final raw = value?.trim() ?? '';\n    final uri = Uri.tryParse(raw);\n    return uri != null && (uri.scheme == 'https' || uri.scheme == 'http') && uri.host.isNotEmpty;\n  }\n\n  Widget fallbackPoster() => Container(color: const Color(0xFF131B2E), alignment: Alignment.center, child: const Icon(Icons.movie_outlined, color: muted, size: 24));
 
   static const sections = <_Section>[
     _Section('channels', 'القنوات', 'القنوات وتصنيفات المصدر', Icons.live_tv_rounded, Color(0xFF3B82F6)),
