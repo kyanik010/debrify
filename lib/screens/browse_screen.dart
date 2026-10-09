@@ -54,6 +54,7 @@ class BrowseScreen extends StatefulWidget {
   final bool submitOnly;
   final bool isTelevision;
   final bool embedSearchHeaderInView;
+  final bool hideSearchHeader;
   final Widget Function(BrowseViewArgs args) viewBuilder;
 
   const BrowseScreen({
@@ -63,6 +64,7 @@ class BrowseScreen extends StatefulWidget {
     required this.submitOnly,
     required this.isTelevision,
     this.embedSearchHeaderInView = false,
+    this.hideSearchHeader = false,
     required this.viewBuilder,
   });
 
@@ -193,7 +195,9 @@ class _BrowseScreenState extends State<BrowseScreen> {
         searchToken: _searchToken,
         isTelevision: widget.isTelevision,
         onUpArrowToSearch: _searchFocusNode.requestFocus,
-        searchHeader: widget.embedSearchHeaderInView ? searchHeader : null,
+        searchHeader: widget.embedSearchHeaderInView && !widget.hideSearchHeader
+            ? searchHeader
+            : null,
       ),
     );
     return Scaffold(
