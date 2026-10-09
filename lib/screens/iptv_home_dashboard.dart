@@ -43,7 +43,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
           final page = snapshot.page(offset: offset, limit: 100, live: false);
           if (page.isEmpty) break;
           destination.addAll(
-            page.where((channel) => (channel.logoUrl ?? '').trim().isNotEmpty)
+            page.where((channel) => _validArtworkUrl(channel.logoUrl))
                 .take(12 - destination.length),
           );
           offset += page.length;
@@ -77,7 +77,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
             final page = snapshot.page(offset: offset, limit: 100, live: false);
             if (page.isEmpty) break;
             for (final channel in page) {
-              if ((channel.logoUrl ?? '').trim().isEmpty) continue;
+              if (!_validArtworkUrl(channel.logoUrl)) continue;
               if (channel.contentType == 'series' && seriesItems.length < 12) {
                 seriesItems.add(channel);
               } else if ((channel.contentType == 'vod' ||
