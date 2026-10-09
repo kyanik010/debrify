@@ -1872,9 +1872,8 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     // Initialize deep link service for magnet links
     _initializeDeepLinking();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeAutoCheckForUpdates();
-    });
+    // App-update checks are intentionally disabled: never interrupt the
+    // IPTV experience with update prompts or notifications.
 
     _scheduleSupportCampaignPrompt();
   }
