@@ -130,7 +130,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: bg,
     body: SafeArea(child: LayoutBuilder(builder: (context, box) {
-      final landscape = box.maxWidth > box.maxHeight && box.maxHeight < 650;
+      final landscape = box.maxWidth > box.maxHeight;
       return landscape ? landscapeBody() : portraitBody();
     })),
   );
