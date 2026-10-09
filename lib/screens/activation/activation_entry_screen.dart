@@ -12,6 +12,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../models/iptv_playlist.dart';
 import '../../services/storage_service.dart';
+import '../../services/iptv_service.dart';
+import '../../services/xtream_codes_service.dart';
 
 class ActivationEntryScreen extends StatefulWidget {
   const ActivationEntryScreen({super.key, required this.activatedBuilder});
@@ -160,6 +162,11 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
       await _installManagedPlaylist(source);
       if (!mounted) return;
       setState(() => _activated = true);
+    } on FormatException {
+      await _setPageState(
+        'pending',
+        'تم العثور على الاشتراك، لكن تعذر الاتصال بمصدر القنوات. راجع الدعم.',
+      );
     } catch (_) {
       await _setPageState(
         'offline',
@@ -185,11 +192,68 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
       throw const FormatException('Incomplete M3U IPTV source');
     }
 
+    final serverUrl = isXtream ? host.replaceAll(RegExp(r'/+
+    final existing = await StorageService.getIptvPlaylists(forSettings: true);
+    final updated = <IptvPlaylist>[
+      for (final item in existing)
+        if (item.id != _managedPlaylistId) item,
+      playlist,
+    ];
+    await StorageService.setIptvPlaylistsAndReload(
+      updated,
+      forSettings: true,
+    );
+    await StorageService.setIptvDefaultPlaylist(_managedPlaylistId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_activated) return widget.activatedBuilder(context);
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0F1A),
+      body: _deviceId.isEmpty
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFE6C982),
+                strokeWidth: 2.5,
+              ),
+            )
+          : WebViewWidget(controller: _controller),
+    );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+}
+
+), '') : '';
+    if (isXtream) {
+      final authentication = await XtreamCodesService.instance.authenticate(
+        serverUrl,
+        username,
+        password,
+      );
+      if (!authentication.success) {
+        throw const FormatException('xtream_source_unreachable');
+      }
+    } else {
+      final validation = await IptvService.instance.fetchPlaylist(
+        m3uUrl,
+        numberingSourceKey: _managedPlaylistId,
+        allowUnbound: true,
+      );
+      if (validation.hasError || validation.isEmpty) {
+        throw const FormatException('m3u_source_unreachable');
+      }
+    }
+
     final playlist = IptvPlaylist(
       id: _managedPlaylistId,
       name: 'Eagle X IPTV',
       url: isXtream ? '' : m3uUrl,
-      serverUrl: isXtream ? host.replaceAll(RegExp(r'/+$'), '') : null,
+      serverUrl: isXtream ? serverUrl : null,
       username: isXtream ? username : null,
       password: isXtream ? password : null,
       addedAt: DateTime.now(),
