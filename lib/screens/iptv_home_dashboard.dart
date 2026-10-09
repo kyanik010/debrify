@@ -76,7 +76,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   Widget portraitBody() => SingleChildScrollView(
     padding: const EdgeInsets.all(12),
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      header(), const SizedBox(height: 12), hero(), const SizedBox(height: 14),
+      header(), const SizedBox(height: 12), SizedBox(height: 140, child: hero()), const SizedBox(height: 14),
       posterSection('أحدث الأفلام', movies, 'vod', height: 150),
       const SizedBox(height: 12),
       for (final s in sections) ...[card(s), const SizedBox(height: 9)],
