@@ -14,8 +14,8 @@ class IptvHomeDashboard extends StatefulWidget {
 }
 
 class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
-  static const bg = Color(0xFF091A29), surface = Color(0xE6102A3D);
-  static const blue = Color(0xFF57CAFF), muted = Color(0xFF85A4BC);
+  static const bg = Color(0xFF0A101D), surface = Color(0x99131B2E);
+  static const blue = Color(0xFF3B82F6), muted = Color(0xFF9CA3AF);
   List<IptvChannel> movies = const [], series = const [];
   bool loading = true;
 
@@ -167,11 +167,15 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   Widget header({bool compact = false}) => Row(textDirection: TextDirection.rtl, children: [
     Container(width: compact ? 34 : 40, height: compact ? 34 : 40,
       decoration: BoxDecoration(color: blue.withOpacity(.12), shape: BoxShape.circle, border: Border.all(color: blue.withOpacity(.35))),
-      child: const Icon(Icons.play_circle_outline_rounded, color: blue, size: 20)),
+      child: const Icon(Icons.air_rounded, color: blue, size: 20)),
     const SizedBox(width: 10),
     const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Eagle Stream', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
-      Text('LIVE TV · IPTV PREMIUM', style: TextStyle(fontSize: 10, color: muted)),
+      Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('LIVE TV · IPTV PREMIUM', style: TextStyle(fontSize: 10, color: muted)),
+        SizedBox(width: 5),
+        DecoratedBox(decoration: BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x9910B981), blurRadius: 6)]), child: SizedBox(width: 6, height: 6)),
+      ]),
     ])),
     if (!loading) Text(movies.length.toString() + ' أفلام', style: const TextStyle(color: muted, fontSize: 10)),
   ]);
@@ -184,11 +188,11 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
         if (_validArtworkUrl(featured?.logoUrl)) Image.network(featured!.logoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => artwork(), loadingBuilder: (context, child, progress) => progress == null ? child : artwork()) else artwork(),
         DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(.04), bg.withOpacity(.96)]))),
         Positioned(right: 14, left: 14, bottom: 12, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('EAGLE STREAM', style: TextStyle(color: Color(0xFF60A5FA), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-          const SizedBox(height: 4),
-          Text(featured?.name ?? 'استمتع بمحتوى اشتراكك', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+          const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF06B6D4)]), borderRadius: BorderRadius.all(Radius.circular(4))), child: Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2), child: Text('FEATURED', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800)))),
+          const SizedBox(height: 6),
+          Text(featured?.name ?? (loading ? 'جارٍ تحميل محتوى الاشتراك…' : 'لا توجد أفلام متاحة في الكتالوج'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          OutlinedButton.icon(onPressed: () => widget.onOpenSection('vod'), icon: const Icon(Icons.play_arrow_rounded, size: 16), label: const Text('استعرض المحتوى'),
+          OutlinedButton.icon(onPressed: () => widget.onOpenSection('vod'), icon: const Icon(Icons.play_arrow_rounded, size: 16), label: const Text('شاهد الآن'),
             style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: blue.withOpacity(.6)), backgroundColor: blue.withOpacity(.18), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
         ])),
       ]),
