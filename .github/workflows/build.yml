@@ -2,7 +2,7 @@ name: Build Release Artifacts # Android release validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/iptv-onboarding-flow]
   release:
     types: [published]
   workflow_dispatch:
