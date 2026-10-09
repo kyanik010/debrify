@@ -19,13 +19,6 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   List<IptvChannel> movies = const [], series = const [];
   bool loading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    MainPageBridge.homeBoardReady.value = true;
-    unawaited(loadPosters());
-  }
-
   bool _posterLoadInFlight = false;
   Timer? _posterRefreshTimer;
 
