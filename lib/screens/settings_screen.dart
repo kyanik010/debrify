@@ -7990,7 +7990,6 @@ class _SettingsLayout extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                // General About, version, community, and app-update controls
                 // are intentionally hidden in the IPTV-focused settings UI.
                 const SizedBox(height: 24),
                 // Danger Zone LAST — destructive actions live at the end of
