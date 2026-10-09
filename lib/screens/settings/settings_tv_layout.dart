@@ -32,6 +32,10 @@ import '../../theme/app_theme_scope.dart';
 /// `_SettingsLayout`. All actions/dialogs still live in the parent State —
 /// this is presentation + focus only.
 class SettingsTvLayout extends StatefulWidget {
+  // Optional compatibility value for callers that still provide app version.
+  // The TV settings layout does not render app-update controls.
+  final String? appVersion;
+
   final List<ConnectionInfo> connections;
 
   /// Cross-service watch-history policy, visually separated from the account
@@ -152,6 +156,7 @@ class SettingsTvLayout extends StatefulWidget {
 
   const SettingsTvLayout({
     super.key,
+    this.appVersion,
     required this.connections,
     required this.tracking,
     required this.trackers,
