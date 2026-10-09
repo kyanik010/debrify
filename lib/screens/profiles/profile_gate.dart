@@ -89,7 +89,15 @@ bool shouldEnterPlaybackReturn(
 class ProfileGate extends StatefulWidget {
   final Widget child;
 
-  const ProfileGate({super.key, required this.child});
+  /// Skips the profile picker for the single-account IPTV customer flow.
+  /// A profile that has a PIN or requires PIN reset still keeps its lock gate.
+  final bool bypassPicker;
+
+  const ProfileGate({
+    super.key,
+    required this.child,
+    this.bypassPicker = false,
+  });
 
   @override
   State<ProfileGate> createState() => _ProfileGateState();
@@ -234,16 +242,19 @@ class _ProfileGateState extends State<ProfileGate> with WidgetsBindingObserver {
       activeAtStartup.firstOrNull,
       claimed: playbackReturnClaim,
     );
+    final activeStartupProfile = activeAtStartup.firstOrNull;
+    final canBypassPicker =
+        widget.bypassPicker &&
+        activeStartupProfile != null &&
+        !activeStartupProfile.hasPin &&
+        !activeStartupProfile.pinResetRequired;
     setState(() {
       _profiles = profiles;
       _entered =
           playbackReturn ||
+          canBypassPicker ||
           shouldAutoEnterSoleProfile(
             profiles,
-            // The sole-profile launch convenience is opt-IN now: the gate always
-            // asks unless the hub's startup toggle re-enables auto-enter. The
-            // caller's argument still outranks everything — an explicit Switch
-            // or a lock must land on the picker regardless of the toggle.
             allowSingleProfileAutoEnter:
                 allowSingleProfileAutoEnter && !ProfileGateAlwaysAsk.cached,
           );
