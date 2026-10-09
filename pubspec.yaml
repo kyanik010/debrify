@@ -37,6 +37,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   http: ^1.1.0
+  webview_flutter: ^4.13.0
   pug_flutter: ^0.0.3
   intl: ^0.19.0
   shared_preferences: ^2.2.2
@@ -243,6 +244,7 @@ flutter:
     - assets/images/tmdb-logo.png
     - assets/images/profile_avatars/
     - assets/splash_logo.png
+    - assets/eagle-x2-design-v4.html
     - assets/config/app_remote_config.json
     - assets/config/engines/
 
