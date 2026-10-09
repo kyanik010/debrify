@@ -12,8 +12,6 @@ import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart' hide Text;
 import '../utils/arabic_text.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/app_version_info.dart';
 import 'package:path/path.dart' as path;
@@ -63,7 +61,6 @@ import '../services/stremio_service.dart';
 import '../services/android_native_downloader.dart';
 import '../services/live_recording_service.dart';
 import '../services/desktop_schedule_service.dart';
-import '../services/update_service.dart';
 import '../widgets/support_donation_chooser_dialog.dart';
 import '../widgets/tv_text_field.dart';
 import 'settings/debrify_tv_settings_page.dart';
@@ -259,14 +256,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _indexerManagersStatus = 'Not configured';
   String _indexerManagersCaption = 'Connect Jackett or Prowlarr';
 
-  String _appVersion = '';
-  String _currentVersionName = '';
-  bool _checkingUpdates = false;
-  String _updateSubtitle = 'Check for new builds from GitHub releases';
-  StreamSubscription<Map<String, dynamic>>? _updateDownloadSub;
-  String? _updateDownloadTaskId;
-  bool _autoUpdateChecksEnabled = true;
-  bool _includeAlphaUpdates = false;
   bool _diagnosticExportVisible = false;
   bool _exportingDiagnostics = false;
   bool _tvKeyboardEnabled = true;
@@ -333,7 +322,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     _firstCardFocusNode.dispose();
-    _updateDownloadSub?.cancel();
     super.dispose();
   }
 
@@ -465,11 +453,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       summaries.read(
         'TV detection',
         () => AndroidNativeDownloader.isTelevision(),
-        false,
-      ),
-      summaries.read(
-        'Update checks',
-        () => StorageService.getUpdateAutoCheckEnabled(),
         false,
       ),
       summaries.read(
@@ -629,11 +612,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         () => StorageService.getIptvPlaylists(forSettings: true),
         [],
       ),
-      summaries.read(
-        'Alpha updates',
-        () => StorageService.getUpdateIncludeAlphaEnabled(),
-        false,
-      ),
     ]);
 
     if (!mounted || ProfileRuntime.scope.value != startingScope) return;
@@ -650,43 +628,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final traktUsername = results[7] as String?;
     final packageInfo = results[8] as PackageInfo;
     final isAndroidTv = results[9] as bool;
-    final autoCheckEnabled = results[10] as bool;
-    final indexerManagers = results[11] as List;
-    final premiumizeConnected = results[12] as bool;
-    final allDebridConnected = results[13] as bool;
-    final simklConnected = results[14] as bool;
-    final simklUsername = results[15] as String?;
-    final mdblistConnected = results[16] as bool;
-    final mdblistUsername = results[17] as String?;
-    final tvKeyboardEnabled = results[18] as bool;
-    final tvUiScalePercent = results[19] as int;
-    final tvHomeStyle = results[20] as String;
-    final tvSidebarStyle = results[21] as String;
-    final discoverLayout = results[22] as String;
-    final iptvStyle = results[23] as String;
-    final playerGuideStyle = results[24] as String;
-    final phoneNavStyle = results[25] as String;
-    final textBrightness = results[26] as String;
-    final launchAnimation = results[27] as String;
-    final detailPageStyle = results[28] as String;
-    final tvRenderQuality = results[29] as TvRenderQuality;
-    final detailTheme = results[30] as String;
-    final parentsGuideStyle = results[31] as String;
-    final tvHeroArtworkQuality = results[32] as TvHeroArtworkQuality;
+    final indexerManagers = results[10] as List;
+    final premiumizeConnected = results[11] as bool;
+    final allDebridConnected = results[12] as bool;
+    final simklConnected = results[13] as bool;
+    final simklUsername = results[14] as String?;
+    final mdblistConnected = results[15] as bool;
+    final mdblistUsername = results[16] as String?;
+    final tvKeyboardEnabled = results[17] as bool;
+    final tvUiScalePercent = results[18] as int;
+    final tvHomeStyle = results[19] as String;
+    final tvSidebarStyle = results[20] as String;
+    final discoverLayout = results[21] as String;
+    final iptvStyle = results[22] as String;
+    final playerGuideStyle = results[23] as String;
+    final phoneNavStyle = results[24] as String;
+    final textBrightness = results[25] as String;
+    final launchAnimation = results[26] as String;
+    final detailPageStyle = results[27] as String;
+    final tvRenderQuality = results[28] as TvRenderQuality;
+    final detailTheme = results[29] as String;
+    final parentsGuideStyle = results[30] as String;
+    final tvHeroArtworkQuality = results[31] as TvHeroArtworkQuality;
     // Later summary fields stay appended at the END of the Future.wait above,
     // so the long-established indices 0..32 never move.
-    final playerDockStyle = results[33] as String;
-    final playerDockPalette = results[34] as String;
-    final playerDockSize = results[35] as String;
-    final desktopSidebarStyle = results[36] as String;
-    final debrifyTvStyle = results[37] as String;
-    final tvPlayerControlsStyle = results[38] as String;
-    final debrifyTvPlayerStyle = results[39] as String;
-    final playLoaderStyle = results[40] as String;
-    final diagnosticExportVisible = results[41] as bool;
-    final pendingCredentialTypes = results[42] as Set<ConnectionResourceType>;
-    final configuredIptvPlaylists = results[43] as List;
-    final includeAlphaUpdates = results[44] as bool;
+    final playerDockStyle = results[32] as String;
+    final playerDockPalette = results[33] as String;
+    final playerDockSize = results[34] as String;
+    final desktopSidebarStyle = results[35] as String;
+    final debrifyTvStyle = results[36] as String;
+    final tvPlayerControlsStyle = results[37] as String;
+    final debrifyTvPlayerStyle = results[38] as String;
+    final playLoaderStyle = results[39] as String;
+    final diagnosticExportVisible = results[40] as bool;
+    final pendingCredentialTypes = results[41] as Set<ConnectionResourceType>;
+    final configuredIptvPlaylists = results[42] as List;
 
     // Set initial state from cached data
     // Use cached account info if available
@@ -890,8 +866,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
 
-    _appVersion = '${packageInfo.version} (${packageInfo.buildNumber})';
-    _currentVersionName = packageInfo.version;
     _isAndroidTv = isAndroidTv;
     DiagnosticLog.instance.recordEvent(
       source: 'app',
@@ -903,8 +877,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
     _loading = false;
-    _autoUpdateChecksEnabled = autoCheckEnabled;
-    _includeAlphaUpdates = includeAlphaUpdates;
     _tvKeyboardEnabled = tvKeyboardEnabled;
     _tvUiScalePercent = tvUiScalePercent;
     _tvRenderQuality = tvRenderQuality;
@@ -1321,14 +1293,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ? _exportDiagnosticLogs
           : null,
       onDangerAction: _resetAppData,
-      appVersion: _appVersion,
-      onCheckForUpdates: _checkForAppUpdates,
-      updateSubtitle: _updateSubtitle,
-      checkingUpdates: _checkingUpdates,
-      autoUpdateChecksEnabled: _autoUpdateChecksEnabled,
-      onToggleAutoUpdateChecks: _toggleAutoUpdateChecks,
-      includeAlphaUpdates: _includeAlphaUpdates,
-      onToggleIncludeAlphaUpdates: _toggleIncludeAlphaUpdates,
       tvKeyboardEnabled: _tvKeyboardEnabled,
       onToggleTvKeyboard: _toggleTvKeyboard,
       textBrightnessLabel: textBrightnessLabel(_textBrightness),
@@ -1445,14 +1409,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ? _exportDiagnosticLogs
           : null,
       onDangerAction: _resetAppData,
-      appVersion: _appVersion,
-      onCheckForUpdates: _checkForAppUpdates,
-      updateSubtitle: _updateSubtitle,
-      checkingUpdates: _checkingUpdates,
-      autoUpdateChecksEnabled: _autoUpdateChecksEnabled,
-      onToggleAutoUpdateChecks: _toggleAutoUpdateChecks,
-      includeAlphaUpdates: _includeAlphaUpdates,
-      onToggleIncludeAlphaUpdates: _toggleIncludeAlphaUpdates,
       tvKeyboardEnabled: _tvKeyboardEnabled,
       onToggleTvKeyboard: _toggleTvKeyboard,
       showSupportDonation: _supportDonation.hasProviders,
@@ -2812,9 +2768,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'last two hours',
           ],
         ),
-
-      // App-update controls and the general About/community entries are
-      // intentionally omitted from the IPTV-focused settings search.
 
       // Danger Zone
       nav(
@@ -6612,232 +6565,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _loadSummaries();
   }
 
-  Future<void> _checkForAppUpdates() async {
-    if (!await _ensureProfileFeature(ProfileFeature.appUpdates)) return;
-    if (!mounted) return;
-    if (_checkingUpdates) return;
-    if (_currentVersionName.isEmpty) return;
-    await StorageService.setIgnoredUpdateVersion(null);
-
-    setState(() {
-      _checkingUpdates = true;
-      _updateSubtitle = 'Checking GitHub releases...';
-    });
-
-    try {
-      final summary = await UpdateService.checkForUpdates(
-        currentVersion: _currentVersionName,
-        includePrereleases: _includeAlphaUpdates,
-      );
-      if (!mounted) return;
-      setState(() {
-        _updateSubtitle = summary.updateAvailable
-            ? 'Update available (${summary.release.versionLabel})'
-            : 'You are on the latest build';
-        _checkingUpdates = false;
-      });
-      await _showReleaseDetails(summary);
-    } on UpdateException catch (err) {
-      _showSnack(err.message);
-      if (mounted) {
-        setState(() {
-          _updateSubtitle = 'Unable to reach GitHub releases';
-          _checkingUpdates = false;
-        });
-      }
-    } catch (_) {
-      _showSnack('Could not check for updates. Please try again later.');
-      if (mounted) {
-        setState(() {
-          _updateSubtitle = 'Unable to reach GitHub releases';
-          _checkingUpdates = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _showReleaseDetails(UpdateSummary summary) async {
-    final app = AppThemeScope.of(context);
-    if (!mounted) return;
-    final release = summary.release;
-    final theme = Theme.of(context);
-    final bool isAndroidDevice = !kIsWeb && Platform.isAndroid;
-    final bool canInstallDirectly =
-        summary.updateAvailable &&
-        isAndroidDevice &&
-        release.androidApkAsset != null;
-    final String latestLabel = release.versionLabel.isNotEmpty
-        ? release.versionLabel
-        : 'Latest release';
-    final String notes = release.body.trim().isNotEmpty
-        ? release.body.trim()
-        : 'Release notes will appear here once published.';
-    final String? publishedLabel = release.publishedAt != null
-        ? DateFormat.yMMMd().format(release.publishedAt!.toLocal())
-        : null;
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        final baseTheme = Theme.of(sheetContext);
-        final textTheme = baseTheme.textTheme;
-        final Color bodyColor = app.fade(app.core.tx, 0.85);
-        final markdownStyle = MarkdownStyleSheet.fromTheme(baseTheme).copyWith(
-          h1: textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: app.core.tx,
-          ),
-          h2: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: app.core.tx,
-          ),
-          h3: textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: app.core.tx,
-          ),
-          p: textTheme.bodyMedium?.copyWith(color: bodyColor, height: 1.45),
-          strong: const TextStyle(fontWeight: FontWeight.w700),
-          listBullet: textTheme.bodyMedium?.copyWith(color: bodyColor),
-          blockquote: textTheme.bodyMedium?.copyWith(
-            color: app.fade(app.core.tx, 0.7),
-          ),
-        );
-        return FractionallySizedBox(
-          heightFactor: 0.9,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: app.fade(app.core.tx, 0.2),
-                        borderRadius: app.shape.br(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    summary.updateAvailable
-                        ? 'Update available'
-                        : 'You are up to date',
-                    style: textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Installed: $_appVersion',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: app.fade(app.core.tx, 0.6),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Latest: $latestLabel',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: app.fade(app.core.tx, 0.6),
-                    ),
-                  ),
-                  if (publishedLabel != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Published $publishedLabel',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: app.fade(app.core.tx, 0.5),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  Text(
-                    'Release notes',
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: MarkdownBody(
-                        data: notes,
-                        selectable: true,
-                        onTapLink: (text, href, title) {
-                          if (href == null) return;
-                          final uri = Uri.tryParse(href);
-                          if (uri != null) {
-                            launchUrl(
-                              uri,
-                              mode: LaunchMode.externalApplication,
-                            );
-                          }
-                        },
-                        styleSheet: markdownStyle,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      if (canInstallDirectly)
-                        FilledButton.icon(
-                          onPressed: () {
-                            Navigator.of(sheetContext).pop();
-                            _startAndroidUpdateDownload(release);
-                          },
-                          icon: const Icon(Icons.system_update_alt_rounded),
-                          label: Text('Download & Install'),
-                        ),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.of(sheetContext).pop();
-                          _openReleasesPage(release.htmlUrl);
-                        },
-                        icon: const Icon(Icons.open_in_new_rounded),
-                        label: Text('Open Releases Page'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _toggleAutoUpdateChecks(bool enabled) async {
-    if (!await _ensureProfileFeature(ProfileFeature.appUpdates)) return;
-    if (!mounted) return;
-    setState(() {
-      _autoUpdateChecksEnabled = enabled;
-    });
-    await StorageService.setUpdateAutoCheckEnabled(enabled);
-  }
-
-  Future<void> _toggleIncludeAlphaUpdates(bool enabled) async {
-    if (!await _ensureProfileFeature(ProfileFeature.appUpdates)) return;
-    if (!mounted) return;
-    setState(() {
-      _includeAlphaUpdates = enabled;
-      _updateSubtitle = enabled
-          ? 'Check for alpha and beta builds'
-          : 'Check for beta updates';
-    });
-    await StorageService.setUpdateIncludeAlphaEnabled(enabled);
-  }
-
   Future<void> _toggleTvKeyboard(bool enabled) async {
     setState(() {
       _tvKeyboardEnabled = enabled;
@@ -7156,139 +6883,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _startAndroidUpdateDownload(AppRelease release) async {
-    if (kIsWeb) {
-      await _openReleasesPage(release.htmlUrl);
-      return;
-    }
-    if (!Platform.isAndroid) {
-      await _openReleasesPage(release.htmlUrl);
-      return;
-    }
-    if (_updateDownloadTaskId != null) {
-      _showSnack('An update download is already running.');
-      return;
-    }
-    final asset = release.androidApkAsset;
-    if (asset == null) {
-      _showSnack('No Android APK is attached to this release yet.');
-      await _openReleasesPage(release.htmlUrl);
-      return;
-    }
-    final hasPermission = await _ensureInstallPermission();
-    if (!hasPermission) return;
-
-    if (mounted) {
-      setState(() {
-        _updateSubtitle = 'Downloading ${release.versionLabel}...';
-      });
-    }
-
-    String? taskId;
-    const mime = 'application/vnd.android.package-archive';
-    try {
-      taskId = await AndroidNativeDownloader.startUpdate(
-        url: asset.downloadUrl.toString(),
-        fileName: asset.name.isNotEmpty
-            ? asset.name
-            : 'Debrify-${release.versionLabel}.apk',
-        subDir: 'Debrify/Updates',
-        mimeType: mime,
-      );
-    } catch (_) {
-      taskId = null;
-    }
-
-    if (taskId == null) {
-      _showSnack(
-        'Could not start the update download. Please try again later.',
-      );
-      if (mounted) {
-        setState(() {
-          _updateSubtitle = 'Download failed to start';
-        });
-      }
-      return;
-    }
-
-    _updateDownloadTaskId = taskId;
-    _updateDownloadSub?.cancel();
-    _updateDownloadSub = AndroidNativeDownloader.events.listen((event) async {
-      final String eventTaskId = (event['taskId'] ?? '').toString();
-      if (eventTaskId != _updateDownloadTaskId) return;
-      final type = event['type']?.toString();
-      if (type == 'complete') {
-        final contentUri = (event['contentUri'] ?? '').toString();
-        final eventMime = (event['mimeType'] ?? '').toString().isNotEmpty
-            ? (event['mimeType'] ?? '').toString()
-            : mime;
-        try {
-          _showSnack('Update downloaded. Opening installer...');
-          if (contentUri.isNotEmpty) {
-            final ok = await AndroidNativeDownloader.openContentUri(
-              contentUri,
-              eventMime,
-            );
-            if (!ok) {
-              _showSnack('Installer was opened from Downloads instead.');
-            }
-          }
-        } catch (_) {
-          _showSnack(
-            'Could not launch the installer. Check your Downloads app.',
-          );
-        } finally {
-          _clearUpdateDownloadListener();
-          if (mounted) {
-            setState(() {
-              _updateSubtitle = 'Installer ready for ${release.versionLabel}';
-            });
-          }
-        }
-      } else if (type == 'error' || type == 'canceled') {
-        _showSnack('Update download did not finish. Please try again.');
-        _clearUpdateDownloadListener();
-        if (mounted) {
-          setState(() {
-            _updateSubtitle = 'Download failed';
-          });
-        }
-      }
-    });
-
-    _showSnack(
-      'Downloading the update in the background. Check notifications for progress.',
-    );
-  }
-
-  Future<bool> _ensureInstallPermission() async {
-    if (kIsWeb || !Platform.isAndroid) return false;
-    final currentStatus = await Permission.requestInstallPackages.status;
-    if (currentStatus.isGranted) return true;
-    final result = await Permission.requestInstallPackages.request();
-    if (result.isGranted) return true;
-    if (result.isPermanentlyDenied || result.isRestricted) {
-      _showSnack('Allow Debrify to install apps from your settings.');
-      unawaited(openAppSettings());
-    } else {
-      _showSnack('Permission required to install the downloaded update.');
-    }
-    return false;
-  }
-
-  Future<void> _openReleasesPage(Uri url) async {
-    final ok = await launchUrl(url, mode: LaunchMode.externalApplication);
-    if (!ok) {
-      _showSnack('Unable to open the releases page right now.');
-    }
-  }
-
-  void _clearUpdateDownloadListener() {
-    _updateDownloadSub?.cancel();
-    _updateDownloadSub = null;
-    _updateDownloadTaskId = null;
-  }
-
   void _showSnack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -7456,15 +7050,6 @@ const List<SettingsCategoryDefinition> _kAdaptiveSettingsCategories = [
         'clear actions.',
   ),
   SettingsCategoryDefinition(
-    icon: Icons.info_outline_rounded,
-    label: 'About',
-    subtitle: 'Updates, version & community',
-    eyebrow: 'About',
-    title: 'Debrify, up to date.',
-    description:
-        'Version, release checks, and the places where the community meets.',
-  ),
-  SettingsCategoryDefinition(
     icon: Icons.warning_amber_rounded,
     label: 'Danger Zone',
     subtitle: 'Reset Debrify',
@@ -7510,14 +7095,6 @@ class _SettingsLayout extends StatelessWidget {
   final Future<void> Function() onOpenSyncAndMigrate;
   final Future<void> Function()? onExportDiagnosticLogs;
   final Future<void> Function() onDangerAction;
-  final String appVersion;
-  final Future<void> Function() onCheckForUpdates;
-  final String updateSubtitle;
-  final bool checkingUpdates;
-  final bool autoUpdateChecksEnabled;
-  final ValueChanged<bool> onToggleAutoUpdateChecks;
-  final bool includeAlphaUpdates;
-  final ValueChanged<bool> onToggleIncludeAlphaUpdates;
   final bool tvKeyboardEnabled;
   final ValueChanged<bool> onToggleTvKeyboard;
   final bool showSupportDonation;
@@ -7607,14 +7184,6 @@ class _SettingsLayout extends StatelessWidget {
     required this.onOpenSyncAndMigrate,
     this.onExportDiagnosticLogs,
     required this.onDangerAction,
-    required this.appVersion,
-    required this.onCheckForUpdates,
-    required this.updateSubtitle,
-    required this.checkingUpdates,
-    required this.autoUpdateChecksEnabled,
-    required this.onToggleAutoUpdateChecks,
-    required this.includeAlphaUpdates,
-    required this.onToggleIncludeAlphaUpdates,
     required this.tvKeyboardEnabled,
     required this.onToggleTvKeyboard,
     required this.showSupportDonation,
@@ -8066,66 +7635,6 @@ class _SettingsLayout extends StatelessWidget {
                 ],
               ),
             ],
-          ],
-        );
-      case 15:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SettingsSection(
-              title: 'Updates',
-              children: [
-                SettingsToggleTile.spec(
-                  SettingsRows.autoUpdate,
-                  value: autoUpdateChecksEnabled,
-                  onChanged: onToggleAutoUpdateChecks,
-                ),
-                SettingsToggleTile.spec(
-                  SettingsRows.includeAlphaUpdates,
-                  value: includeAlphaUpdates,
-                  onChanged: onToggleIncludeAlphaUpdates,
-                ),
-                SettingsTile.spec(
-                  SettingsRows.checkUpdates,
-                  subtitle: updateSubtitle,
-                  onTap: onCheckForUpdates,
-                  tag: 'New',
-                  trailing: checkingUpdates
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2.5),
-                        )
-                      : null,
-                ),
-                SettingsInfoTile.spec(SettingsRows.version, value: appVersion),
-              ],
-            ),
-            const SizedBox(height: 18),
-            SettingsSection(
-              title: 'Community & Support',
-              children: [
-                if (showSupportDonation)
-                  SettingsTile(
-                    icon: SettingsRows.supportDebrify.icon,
-                    title: supportDonationLabel,
-                    subtitle: supportDonationSubtitle,
-                    onTap: onOpenSupportDonation,
-                  ),
-                SettingsTile.spec(
-                  SettingsRows.reddit,
-                  onTap: () => launchSettingsUrl(SettingsRows.reddit.url!),
-                ),
-                SettingsTile.spec(
-                  SettingsRows.discord,
-                  onTap: () => launchSettingsUrl(SettingsRows.discord.url!),
-                ),
-                SettingsTile.spec(
-                  SettingsRows.github,
-                  onTap: () => launchSettingsUrl(SettingsRows.github.url!),
-                ),
-              ],
-            ),
           ],
         );
       case 16:
