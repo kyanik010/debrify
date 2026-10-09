@@ -2854,6 +2854,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
           submitOnly: true,
           isTelevision: _isAndroidTv,
           embedSearchHeaderInView: true,
+          hideSearchHeader: true,
           viewBuilder: (args) => IptvResultsView(
             key: args.resultKey,
             initialContentType: _requestedIptvContentType,
