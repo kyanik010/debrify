@@ -2588,6 +2588,11 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     // deleting integrations, player code, subtitle sources, external audio,
     // credentials, or settings. Existing IPTV flows remain untouched.
     return _applyProfilePolicy([
+      // Eagle Stream is the post-activation landing page. Keep it visible in
+      // the IPTV-only build; otherwise the profile visibility pass silently
+      // replaces index 15 with the legacy IPTV browser (index 13), making the
+      // redesigned dashboard unreachable even though it is built into the APK.
+      MainTab.home,
       MainTab.iptv,
       MainTab.settings,
     ]);
