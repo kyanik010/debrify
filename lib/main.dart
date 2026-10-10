@@ -1270,7 +1270,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
 
   // Start on the Eagle Stream dashboard unless a startup channel is pending.
   // In that case IPTV must mount first to own the requested playback launch.
-  int _selectedIndex = MainPageBridge.hasPendingIptvStartup ? MainTab.iptv : 15;
+  int _selectedIndex = 15;
   String _requestedIptvContentType = 'live';
   String? _requestedIptvPlaylistId;
   bool _didCheckInitialIptvSetup = false;
@@ -1531,17 +1531,12 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     // signed-in profile may not be allowed IPTV at all. Cancel BEFORE the
     // IPTV page can mount and start tuning; the guard mirror is valid here
     // because the gate updates it before revealing this tree.
-    if (MainPageBridge.hasPendingIptvStartup &&
-        !ProfilePolicyGuard.allowsSync(ProfileFeature.iptv)) {
+    // Always land on the Eagle Stream dashboard after sign-in.
+    // A pending IPTV startup request must not bypass the requested home UI
+    // and drop the customer directly into the channel browser/player.
+    if (MainPageBridge.hasPendingIptvStartup) {
       MainPageBridge.cancelIptvStartupChannel();
       _selectedIndex = MainTab.home;
-    }
-    if (MainPageBridge.hasPendingIptvStartup) {
-      _showIptvStartupOverlay = true;
-      MainPageBridge.hideAutoLaunchOverlay = _hideIptvStartupOverlay;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        MainPageBridge.homeBoardReady.value = true;
-      });
     }
     unawaited(_loadPhoneNavPrefs());
     MainPageBridge.tvSidebarStyleChanged = () {
