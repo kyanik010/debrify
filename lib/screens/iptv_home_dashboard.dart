@@ -148,37 +148,110 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
 
   Widget landscapeBody() => Padding(
     padding: const EdgeInsets.all(8),
-    child: Column(children: [
-      header(compact: true), const SizedBox(height: 8),
-      Expanded(child: Row(textDirection: TextDirection.rtl, children: [
-        Expanded(flex: 6, child: Column(children: [
-          Expanded(flex: 5, child: hero()), const SizedBox(height: 8),
-          Expanded(flex: 4, child: posterSection('أحدث الأفلام', movies, 'vod')),
-        ])),
-        const SizedBox(width: 12),
-        Expanded(flex: 5, child: Column(children: [
-          for (final s in sections) Expanded(child: Padding(padding: const EdgeInsets.only(bottom: 7), child: card(s, compact: true))),
-        ])),
-      ])),
-      footer(),
-    ]),
+    child: Column(
+      children: [
+        header(compact: true),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Row(
+            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Match the reference: the hero occupies the first two rows,
+              // while the real IPTV poster shelf occupies the lower three.
+              Expanded(
+                flex: 6,
+                child: Column(
+                  children: [
+                    Expanded(flex: 2, child: hero()),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      flex: 3,
+                      child: posterSection('أحدث الأفلام', movies, 'vod'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 5,
+                child: Column(
+                  children: [
+                    for (final s in sections)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: card(s, compact: true),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        footer(),
+      ],
+    ),
   );
 
-  Widget header({bool compact = false}) => Row(textDirection: TextDirection.rtl, children: [
-    Container(width: compact ? 34 : 40, height: compact ? 34 : 40,
-      decoration: BoxDecoration(color: blue.withOpacity(.12), shape: BoxShape.circle, border: Border.all(color: blue.withOpacity(.35))),
-      child: const Icon(Icons.air_rounded, color: blue, size: 20)),
-    const SizedBox(width: 10),
-    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Eagle Stream', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        Text('LIVE TV · IPTV PREMIUM', style: TextStyle(fontSize: 10, color: muted)),
-        SizedBox(width: 5),
-        DecoratedBox(decoration: BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x9910B981), blurRadius: 6)]), child: SizedBox(width: 6, height: 6)),
-      ]),
-    ])),
-    if (!loading) Text(movies.length.toString() + ' أفلام', style: const TextStyle(color: muted, fontSize: 10)),
-  ]);
+  Widget header({bool compact = false}) => Row(
+    textDirection: TextDirection.rtl,
+    children: [
+      // DOM order and RTL placement mirror Eagle Stream: title on the right,
+      // circular mark on the left. No demo username or fake account number.
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Eagle Stream',
+              style: TextStyle(
+                fontSize: compact ? 16 : 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'LIVE TV · IPTV PREMIUM',
+                  style: TextStyle(fontSize: 10, color: muted),
+                ),
+                SizedBox(width: 5),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xFF10B981),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Color(0x9910B981), blurRadius: 6),
+                    ],
+                  ),
+                  child: SizedBox(width: 6, height: 6),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      Container(
+        width: compact ? 34 : 40,
+        height: compact ? 34 : 40,
+        decoration: BoxDecoration(
+          color: blue.withOpacity(.12),
+          shape: BoxShape.circle,
+          border: Border.all(color: blue.withOpacity(.35)),
+          boxShadow: [
+            BoxShadow(color: blue.withOpacity(.12), blurRadius: 15),
+          ],
+        ),
+        child: const Icon(Icons.air_rounded, color: blue, size: 20),
+      ),
+    ],
+  );
 
   Widget hero() {
     final featured = movies.isNotEmpty ? movies.first : null;
@@ -204,26 +277,191 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     child: Center(child: Icon(Icons.movie_filter_rounded, size: 54, color: Color(0x553B82F6))),
   );
 
-  Widget posterSection(String title, List<IptvChannel> items, String target, {double? height}) => SizedBox(
-    height: height,
-    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(textDirection: TextDirection.rtl, children: [
-        Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700))),
-        TextButton(onPressed: () => widget.onOpenSection(target), style: TextButton.styleFrom(foregroundColor: const Color(0xFF60A5FA), padding: EdgeInsets.zero, minimumSize: const Size(40, 24)), child: const Text('عرض الكل', style: TextStyle(fontSize: 10))),
-      ]),
-      const SizedBox(height: 5),
-      Expanded(child: loading && items.isEmpty
-        ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: blue)))
-        : items.isEmpty
-          ? Container(alignment: Alignment.center, decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(10)), child: const Text('لا توجد بوسترات متاحة من المصدر', style: TextStyle(color: muted, fontSize: 10)))
-          : ListView.separated(scrollDirection: Axis.horizontal, itemCount: items.length, separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) => SizedBox(width: 96, child: InkWell(onTap: () => widget.onOpenSection(target), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(10), child: _validArtworkUrl(items[i].logoUrl) ? Image.network(items[i].logoUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallbackPoster(), loadingBuilder: (context, child, progress) => progress == null ? child : fallbackPoster()) : fallbackPoster())),
-              const SizedBox(height: 4), Text(items[i].name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
-            ]))),
-          )),
-    ]),
-  );
+  Widget posterSection(
+    String title,
+    List<IptvChannel> items,
+    String target, {
+    double? height,
+  }) =>
+      SizedBox(
+        height: height,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => widget.onOpenSection(target),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF60A5FA),
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 24),
+                  ),
+                  child: const Text(
+                    'عرض الكل',
+                    style: TextStyle(fontSize: 10),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Expanded(
+              child: loading && items.isEmpty
+                  ? const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: blue,
+                        ),
+                      ),
+                    )
+                  : items.isEmpty
+                      ? Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: surface,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'لا توجد بوسترات متاحة من المصدر',
+                            style: TextStyle(color: muted, fontSize: 10),
+                          ),
+                        )
+                      : ListView.separated(
+                          scrollDirection:
+                              height == null ? Axis.vertical : Axis.horizontal,
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) => SizedBox(
+                            width: height == null ? 0 : 8,
+                            height: height == null ? 8 : 0,
+                          ),
+                          itemBuilder: (_, i) {
+                            final item = items[i];
+                            final image = ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: _validArtworkUrl(item.logoUrl)
+                                  ? Image.network(
+                                      item.logoUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          fallbackPoster(),
+                                      loadingBuilder: (context, child, progress) =>
+                                          progress == null
+                                              ? child
+                                              : fallbackPoster(),
+                                    )
+                                  : fallbackPoster(),
+                            );
+                            if (height == null) {
+                              // Landscape reference uses a compact vertical
+                              // stack of wide artwork cards with title overlays.
+                              return SizedBox(
+                                height: 60,
+                                child: InkWell(
+                                  onTap: () => widget.onOpenSection(target),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      image,
+                                      const DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.transparent,
+                                              Color(0xDD000000),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 4,
+                                        right: 4,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 1,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: blue.withOpacity(.9),
+                                            borderRadius:
+                                                BorderRadius.circular(3),
+                                          ),
+                                          child: const Text(
+                                            'IPTV',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 7,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: 6,
+                                        left: 6,
+                                        bottom: 6,
+                                        child: Text(
+                                          item.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            return SizedBox(
+                              width: 96,
+                              child: InkWell(
+                                onTap: () => widget.onOpenSection(target),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(child: image),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      );
 
   bool _validArtworkUrl(String? value) {
     final raw = value?.trim() ?? '';
@@ -244,19 +482,88 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   ];
 
   Widget card(_Section s, {bool compact = false}) => Material(
-    color: surface, borderRadius: BorderRadius.circular(15),
-    child: InkWell(onTap: () => widget.onOpenSection(s.id), borderRadius: BorderRadius.circular(15),
-      child: Container(padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14, vertical: compact ? 4 : 10),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), border: Border.all(color: blue.withOpacity(.16)), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))]),
-        child: Row(textDirection: TextDirection.rtl, children: [
-          Container(width: compact ? 28 : 34, height: compact ? 28 : 34, decoration: BoxDecoration(color: s.color.withOpacity(.15), borderRadius: BorderRadius.circular(10), border: Border.all(color: s.color.withOpacity(.35))), child: Icon(s.icon, color: s.color, size: compact ? 14 : 17)),
-          const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(s.title, style: TextStyle(color: Colors.white, fontSize: compact ? 11 : 14, fontWeight: FontWeight.w800)),
-            if (!compact) Text(s.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: muted, fontSize: 10)),
-          ])),
-          Icon(Icons.chevron_left_rounded, size: compact ? 17 : 20, color: muted),
-        ]),
+    color: surface,
+    borderRadius: BorderRadius.circular(15),
+    child: InkWell(
+      onTap: () => widget.onOpenSection(s.id),
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 10 : 14,
+          vertical: compact ? 4 : 10,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: blue.withOpacity(.16)),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          // With RTL, children are positioned right-to-left like the HTML:
+          // title, colored icon, then the circular arrow at the far left.
+          textDirection: TextDirection.rtl,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    s.title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: compact ? 12 : 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (!compact)
+                    Text(
+                      s.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: muted, fontSize: 10),
+                    ),
+                ],
+              ),
+            ),
+            Container(
+              width: compact ? 28 : 34,
+              height: compact ? 28 : 34,
+              decoration: BoxDecoration(
+                color: s.color.withOpacity(.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: s.color.withOpacity(.35)),
+              ),
+              child: Icon(
+                s.icon,
+                color: s.color,
+                size: compact ? 12 : 15,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: compact ? 18 : 24,
+              height: compact ? 18 : 24,
+              decoration: BoxDecoration(
+                color: blue.withOpacity(.1),
+                shape: BoxShape.circle,
+                border: Border.all(color: blue.withOpacity(.2)),
+              ),
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: compact ? 12 : 15,
+                color: muted,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
