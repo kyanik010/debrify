@@ -105,12 +105,10 @@ import 'services/remote_control/remote_command_router.dart';
 import 'services/remote_control/remote_constants.dart';
 import 'services/analytics_service.dart';
 import 'services/text_brightness.dart';
-import 'services/support_remote_config_service.dart';
 import 'widgets/auto_launch_overlay.dart';
 import 'widgets/remote/addon_install_dialog.dart';
 import 'widgets/remote/remote_pairing_dialog.dart';
 import 'widgets/remote/remote_role_picker_screen.dart';
-import 'widgets/support_donation_chooser_dialog.dart';
 import 'utils/platform_util.dart';
 import 'utils/tvos_device.dart';
 import 'services/desktop_recording_service.dart';
@@ -1268,98 +1266,11 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-class _SupportCampaignDialog extends StatefulWidget {
-  final SupportCampaignConfig campaign;
-  final Future<void> Function() onDismissForever;
-
-  const _SupportCampaignDialog({
-    required this.campaign,
-    required this.onDismissForever,
-  });
-
-  @override
-  State<_SupportCampaignDialog> createState() => _SupportCampaignDialogState();
-}
-
-class _SupportCampaignDialogState extends State<_SupportCampaignDialog> {
-  final FocusNode _maybeLaterFocusNode = FocusNode(
-    debugLabel: 'supportMaybeLater',
-  );
-  final FocusNode _dismissFocusNode = FocusNode(
-    debugLabel: 'supportDismissForever',
-  );
-  final FocusNode _donateFocusNode = FocusNode(debugLabel: 'supportDonate');
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _donateFocusNode.requestFocus();
-    });
-  }
-
-  @override
-  void dispose() {
-    _maybeLaterFocusNode.dispose();
-    _dismissFocusNode.dispose();
-    _donateFocusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return FocusTraversalGroup(
-      child: FocusScope(
-        autofocus: true,
-        child: AlertDialog(
-          backgroundColor: theme.colorScheme.surface,
-          title: Text(widget.campaign.title),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Text(
-              widget.campaign.message,
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
-            ),
-          ),
-          actions: [
-            TextButton(
-              focusNode: _maybeLaterFocusNode,
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-              child: const Text('Maybe later'),
-            ),
-            TextButton(
-              focusNode: _dismissFocusNode,
-              onPressed: () async {
-                await widget.onDismissForever();
-                if (mounted) {
-                  Navigator.of(context).pop(false);
-                }
-              },
-              child: const Text("Don't show again"),
-            ),
-            FilledButton(
-              focusNode: _donateFocusNode,
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: Text(widget.campaign.buttonLabel),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
 
   // Start on the Eagle Stream dashboard unless a startup channel is pending.
   // In that case IPTV must mount first to own the requested playback launch.
-  int _selectedIndex = MainPageBridge.hasPendingIptvStartup ? MainTab.iptv : MainTab.home;
+  int _selectedIndex = MainPageBridge.hasPendingIptvStartup ? MainTab.iptv : 15;
   String _requestedIptvContentType = 'live';
   String? _requestedIptvPlaylistId;
   bool _didCheckInitialIptvSetup = false;
@@ -1492,9 +1403,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
   bool _remoteControlEnabled = true;
   UserProfile? _profilePolicy;
   bool _hasTrackedInitialTab = false;
-  bool _didCheckSupportCampaign = false;
-  bool _startupModalActive = false;
-  bool _supportCampaignResolved = false;
 
   /// True while a Cloud-hub provider route is on the stack, so a rapid re-tap or
   /// a duplicate deep link doesn't stack a second identical provider route.
@@ -1874,7 +1782,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     // Initialize deep link service for magnet links
     _initializeDeepLinking();
 
-    _scheduleSupportCampaignPrompt();
   }
 
   /// First-run IPTV onboarding: after profile selection, require the customer
@@ -2298,80 +2205,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
 
     // Initialize the service
     deepLinkService.initialize();
-  }
-
-  void _scheduleSupportCampaignPrompt() {
-    if (_didCheckSupportCampaign) return;
-    _didCheckSupportCampaign = true;
-
-    Future<void>.delayed(const Duration(seconds: 4), () async {
-      if (!mounted) return;
-      await _runDeferredSupportCampaignPrompt();
-    });
-  }
-
-  Future<void> _runDeferredSupportCampaignPrompt() async {
-    if (!mounted || _supportCampaignResolved) return;
-    if (_startupModalActive) {
-      Future<void>.delayed(const Duration(seconds: 3), () async {
-        if (!mounted) return;
-        await _runDeferredSupportCampaignPrompt();
-      });
-      return;
-    }
-
-    final completed = await _maybeShowSupportCampaignDialog();
-    if (completed) {
-      _supportCampaignResolved = true;
-      return;
-    }
-
-    if (!mounted || _supportCampaignResolved) return;
-    Future<void>.delayed(const Duration(seconds: 3), () async {
-      if (!mounted) return;
-      await _runDeferredSupportCampaignPrompt();
-    });
-  }
-
-  Future<bool> _maybeShowSupportCampaignDialog() async {
-    final config = await SupportRemoteConfigService.instance.loadConfig();
-    final campaign = config.campaign;
-    final donation = config.donation;
-    if (_startupModalActive) return false;
-    if (!campaign.isActiveAt(
-      DateTime.now().toUtc(),
-      providers: donation.providers,
-    )) {
-      return true;
-    }
-
-    final dismissedIds = await StorageService.getDismissedDonationCampaignIds();
-    if (dismissedIds.contains(campaign.id)) return true;
-    if (!mounted) return false;
-
-    _startupModalActive = true;
-    try {
-      final shouldOpenChooser = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => _SupportCampaignDialog(
-          campaign: campaign,
-          onDismissForever: () async {
-            await StorageService.dismissDonationCampaign(campaign.id);
-          },
-        ),
-      );
-
-      if (shouldOpenChooser == true && mounted) {
-        await showSupportDonationChooserDialog(
-          context,
-          donation: donation,
-          title: donation.settingsLabel,
-        );
-      }
-      return true;
-    } finally {
-      _startupModalActive = false;
-    }
   }
 
   /// Fallback handler for PikPak post-action when TorrentSearchScreen is not mounted
