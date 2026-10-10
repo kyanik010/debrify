@@ -3191,7 +3191,8 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     final app = AppThemeScope.of(context);
     final eagleIptvSurface = _selectedIndex == MainTab.home ||
         _selectedIndex == MainTab.iptv ||
-        _selectedIndex == MainTab.settings;
+        _selectedIndex == MainTab.settings ||
+        _selectedIndex == 15; // Eagle Stream dashboard: no legacy bottom nav
 
     return Stack(
       children: [
