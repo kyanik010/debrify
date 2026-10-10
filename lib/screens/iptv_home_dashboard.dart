@@ -522,14 +522,17 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  if (!compact)
-                    Text(
-                      s.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: muted, fontSize: 10),
+                  Text(
+                    s.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: muted,
+                      fontSize: compact ? 8 : 10,
+                      height: compact ? 1 : null,
                     ),
+                  ),
                 ],
               ),
             ),
