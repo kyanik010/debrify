@@ -1536,7 +1536,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     // and drop the customer directly into the channel browser/player.
     if (MainPageBridge.hasPendingIptvStartup) {
       MainPageBridge.cancelIptvStartupChannel();
-      _selectedIndex = MainTab.home;
+      _selectedIndex = 15; // Return to Eagle Stream, not the legacy Home tab.
     }
     unawaited(_loadPhoneNavPrefs());
     MainPageBridge.tvSidebarStyleChanged = () {
@@ -1803,7 +1803,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
           ),
         ),
       );
-      if (mounted && added == true) _onItemTapped(MainTab.home);
+      if (mounted && added == true) _onItemTapped(15); // Show Eagle Stream after subscription setup.
     } catch (error) {
       debugPrint('Initial IPTV setup could not be checked (${error.runtimeType})');
     }
@@ -2691,7 +2691,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
             initialContentType: _requestedIptvContentType,
             initialPlaylistId: _requestedIptvPlaylistId,
             hideContentTypeSelector: true,
-            onBackToHome: () => _onItemTapped(MainTab.home),
+            onBackToHome: () => _onItemTapped(15),
             searchQuery: args.query,
             isTelevision: args.isTelevision,
             onUpArrowFromFilters: args.onUpArrowToSearch,
