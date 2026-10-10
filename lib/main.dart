@@ -1818,7 +1818,11 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     setState(() {
       _profilePolicy = profile;
       final visible = _computeVisibleNavIndices();
-      if (!visible.contains(_selectedIndex)) {
+      // Eagle Stream is an internal landing surface, not a legacy navigation
+      // destination. Keep it selected after profile policy loads; otherwise
+      // the post-login policy refresh silently replaces index 15 with the
+      // old Home tab before the user ever sees the requested dashboard.
+      if (_selectedIndex != 15 && !visible.contains(_selectedIndex)) {
         _selectedIndex = visible.contains(MainTab.home)
             ? MainTab.home
             : visible.first;
