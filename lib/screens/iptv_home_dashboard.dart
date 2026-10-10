@@ -17,6 +17,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   static const bg = Color(0xFF0A101D), surface = Color(0x99131B2E);
   static const blue = Color(0xFF3B82F6), muted = Color(0xFF9CA3AF);
   List<IptvChannel> movies = const [], series = const [];
+  String accountLabel = 'اشتراك IPTV';
   bool loading = true;
 
   bool _posterLoadInFlight = false;
@@ -28,6 +29,10 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     try {
       await IptvCatalogDb.open();
       final playlists = await StorageService.getIptvPlaylists(forSettings: false);
+      final accountPlaylists = playlists.where((p) => !p.isVirtual && !p.isLocalFile).toList();
+      final activePlaylist = accountPlaylists.isEmpty ? null : accountPlaylists.first;
+      final account = activePlaylist?.username?.trim();
+      final playlistName = activePlaylist?.name.trim();
       final movieItems = <IptvChannel>[];
       final seriesItems = <IptvChannel>[];
 
@@ -96,6 +101,9 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
       setState(() {
         movies = movieItems.take(12).toList();
         series = seriesItems.take(12).toList();
+        accountLabel = account != null && account.isNotEmpty
+            ? account
+            : (playlistName != null && playlistName.isNotEmpty ? playlistName : 'اشتراك IPTV');
         loading = false;
       });
     } catch (error) {
@@ -214,15 +222,19 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
               ),
             ),
             const SizedBox(height: 2),
-            const Row(
+            Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'LIVE TV · IPTV PREMIUM',
-                  style: TextStyle(fontSize: 10, color: muted),
+                Flexible(
+                  child: Text(
+                    'LIVE TV · $accountLabel',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10, color: muted),
+                  ),
                 ),
-                SizedBox(width: 5),
-                DecoratedBox(
+                const SizedBox(width: 5),
+                const DecoratedBox(
                   decoration: BoxDecoration(
                     color: Color(0xFF10B981),
                     shape: BoxShape.circle,
@@ -341,13 +353,9 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                           ),
                         )
                       : ListView.separated(
-                          scrollDirection:
-                              height == null ? Axis.vertical : Axis.horizontal,
+                          scrollDirection: Axis.horizontal,
                           itemCount: items.length,
-                          separatorBuilder: (_, __) => SizedBox(
-                            width: height == null ? 0 : 8,
-                            height: height == null ? 8 : 0,
-                          ),
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (_, i) {
                             final item = items[i];
                             final image = ClipRRect(
@@ -365,79 +373,13 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                                     )
                                   : fallbackPoster(),
                             );
-                            if (height == null) {
-                              // Landscape reference uses a compact vertical
-                              // stack of wide artwork cards with title overlays.
-                              return SizedBox(
-                                height: 60,
-                                child: InkWell(
-                                  onTap: () => widget.onOpenSection(target),
-                                  child: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      image,
-                                      const DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                            colors: [
-                                              Colors.transparent,
-                                              Color(0xDD000000),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 4,
-                                        right: 4,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 5,
-                                            vertical: 1,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: blue.withOpacity(.9),
-                                            borderRadius:
-                                                BorderRadius.circular(3),
-                                          ),
-                                          child: const Text(
-                                            'IPTV',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 7,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        right: 6,
-                                        left: 6,
-                                        bottom: 6,
-                                        child: Text(
-                                          item.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
                             return SizedBox(
-                              width: 96,
+                              width: height == null ? 112 : 96,
                               child: InkWell(
                                 onTap: () => widget.onOpenSection(target),
+                                borderRadius: BorderRadius.circular(10),
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
                                     Expanded(child: image),
                                     const SizedBox(height: 4),
@@ -571,10 +513,24 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     ),
   );
 
-  Widget footer() => const Padding(padding: EdgeInsets.only(top: 3, bottom: 2), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-    Icon(Icons.graphic_eq_rounded, color: Color(0xFF4B5563), size: 12), SizedBox(width: 5),
-    Text('Eagle Stream · IPTV', style: TextStyle(color: Color(0xFF4B5563), fontSize: 9)),
-  ]));
+  Widget footer() => const Padding(
+    padding: EdgeInsets.only(top: 3, bottom: 2),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.graphic_eq_rounded, color: Color(0xFF4B5563), size: 12),
+        SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            'Eagle Stream Live IPTV · Reform · Multi-Engine Core',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Color(0xFF4B5563), fontSize: 9),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Section {
