@@ -120,7 +120,7 @@ class IptvResultsView extends StatefulWidget {
     this.isTelevision = false,
     this.initialContentType = 'live',
     this.initialPlaylistId,
-    this.hideContentTypeSelector = false,
+    this.hideContentTypeSelector = true,
     this.onBackToHome,
     this.onUpArrowFromFilters,
     this.searchHeader,
