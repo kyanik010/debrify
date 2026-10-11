@@ -396,11 +396,28 @@ class StremioMeta {
     return '${h}h ${mm}m';
   }
 
-  /// Check if this has a resolved IMDB ID (either from id or imdb_id/links)
-  bool get hasValidImdbId => imdbId != null;
+  /// Check if this has a usable IMDb ID, whether supplied in imdb_id or
+  /// directly as the Stremio content id (a common addon response shape).
+  bool get hasValidImdbId => effectiveImdbId != null;
 
-  /// The effective IMDB ID for torrent search — resolved from imdb_id/links fields
-  String? get effectiveImdbId => imdbId;
+  /// Resolve a valid IMDb title id from metadata.
+  ///
+  /// Some addons return an IMDb id as `id: "tt1234567"` without an `imdb_id` field.
+  /// Accept that canonical IMDb id, but do not treat other namespaces
+  /// (such as TMDB/Trakt ids) as IMDb ids.
+  String? get effectiveImdbId {
+    final resolved = imdbId?.trim();
+    if (resolved != null && RegExp(r'^tt[0-9]+$').hasMatch(resolved)) {
+      return resolved;
+    }
+
+    final canonicalId = id.trim();
+    if (RegExp(r'^tt[0-9]+$').hasMatch(canonicalId)) {
+      return canonicalId;
+    }
+
+    return null;
+  }
 
   /// Check if this has a valid ID (any non-empty ID, not just IMDB)
   bool get hasValidId => id.isNotEmpty;
@@ -534,6 +551,9 @@ class StremioAddon {
 
   /// Human-readable name from manifest
   final String name;
+
+  /// Subtitle-facing label for this addon.
+  String get displayName => name;
   final String? logo;
 
   /// The full manifest URL (includes any configuration)
