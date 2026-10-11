@@ -9,9 +9,6 @@ class StremioExtraParam {
   /// Parameter name (e.g., 'genre', 'search', 'skip')
   final String name;
 
-  /// Subtitle-facing label for this addon.
-  String get displayName => name;
-
   /// Whether this parameter is required
   final bool isRequired;
 
@@ -537,6 +534,9 @@ class StremioAddon {
 
   /// Human-readable name from manifest
   final String name;
+
+  /// Subtitle-facing label for this addon.
+  String get displayName => name;
   final String? logo;
 
   /// The full manifest URL (includes any configuration)
