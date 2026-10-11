@@ -2885,7 +2885,7 @@ class StremioService {
       final id = meta.effectiveImdbId;
       final type = meta.type.toLowerCase();
       return id != null &&
-          RegExp(r'^tt[0-9]{7,10}\$').hasMatch(id) &&
+          RegExp(r'^tt[0-9]{7,10}$').hasMatch(id) &&
           (type == 'movie' || type == 'series');
     }).toList(growable: false);
     if (configuredImdb.isNotEmpty) return configuredImdb;
@@ -2900,7 +2900,7 @@ class StremioService {
         final id = meta.effectiveImdbId;
         final type = meta.type.toLowerCase();
         if (id == null ||
-            !RegExp(r'^tt[0-9]{7,10}\$').hasMatch(id) ||
+            !RegExp(r'^tt[0-9]{7,10}$').hasMatch(id) ||
             (type != 'movie' && type != 'series')) {
           continue;
         }
