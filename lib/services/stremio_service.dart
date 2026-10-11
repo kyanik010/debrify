@@ -3324,26 +3324,6 @@ class StremioService {
     }
     _idleStreamClients.clear();
   }
-}
-).hasMatch(id) &&
-          (type == 'movie' || type == 'series');
-    }).toList(growable: false);
-    if (configuredImdb.isNotEmpty) return configuredImdb;
-    final encoded = Uri.encodeComponent(trimmed);
-    final results = await Future.wait([
-      _searchCinemetaIdentityCatalog('movie', encoded),
-      _searchCinemetaIdentityCatalog('series', encoded),
-    ]);
-    final unique = <String, StremioMeta>{};
-    for (final list in results) {
-      for (final meta in list) {
-        final id = meta.effectiveImdbId;
-        if (id == null || !id.startsWith('tt') || id.length < 9 || int.tryParse(id.substring(2)) == null) continue;
-        unique[meta.type + ':' + id] = meta;
-      }
-    }
-    return unique.values.toList(growable: false);
-  }
 
   Future<List<StremioMeta>> _searchCinemetaIdentityCatalog(String type, String encodedQuery) async {
     try {
