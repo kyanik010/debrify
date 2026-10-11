@@ -5,6 +5,8 @@ import '../models/subtitle_source_priority.dart';
 import 'video_player/utils/subtitle_priority_selection.dart';
 import 'video_player/player_pip_route.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../services/source_selection_diagnostics.dart';
 import '../services/player_visibility.dart';
 import '../utils/media_kit_init.dart';
@@ -15820,6 +15822,48 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return title;
   }
 
+  Future<List<StremioMeta>> _searchCinemetaIdentityTitles(String query) async {
+    final encodedQuery = Uri.encodeComponent(query.trim());
+    if (encodedQuery.isEmpty) return const [];
+
+    Future<List<StremioMeta>> searchType(String type) async {
+      final url =
+          'https://v3-cinemeta.strem.io/catalog/$type/top/search=$encodedQuery.json';
+      try {
+        final response = await http
+            .get(
+              Uri.parse(url),
+              headers: const {'Accept': 'application/json'},
+            )
+            .timeout(const Duration(seconds: 12));
+        if (response.statusCode != 200) return const [];
+
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map<String, dynamic>) return const [];
+        final rawMetas = decoded['metas'];
+        if (rawMetas is! List) return const [];
+
+        return [
+          for (final raw in rawMetas)
+            if (raw is Map)
+              StremioMeta.fromJson({
+                ...Map<String, dynamic>.from(raw),
+                'type': type,
+              }),
+        ];
+      } catch (error) {
+        debugPrint('Subtitle identity: Cinemeta $type search failed: $error');
+        return const [];
+      }
+    }
+
+    final batches = await Future.wait([
+      searchType('movie'),
+      searchType('series'),
+    ]);
+    return batches.expand((items) => items).toList(growable: false);
+  }
+
   List<StremioMeta> _filterIdentitySearchResults(List<StremioMeta> metas) {
     final bestByKey = <String, StremioMeta>{};
 
@@ -15978,10 +16022,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       });
 
       try {
-        final metas = await StremioService.instance.searchCatalogs(query);
+        var metas = await StremioService.instance.searchCatalogs(query);
+        var identityResults = _filterIdentitySearchResults(metas);
+
+        // Subtitle identity lookup must not depend on the user's installed
+        // Stremio catalogs: many searchable addons return non-IMDb IDs (or no
+        // results). Fall back to Cinemeta only when those results cannot
+        // identify a movie/series for subtitle providers.
+        if (identityResults.isEmpty) {
+          metas = await _searchCinemetaIdentityTitles(query);
+          identityResults = _filterIdentitySearchResults(metas);
+        }
+
         if (!sheetActive || !mounted || token != searchToken) return;
         setSheetState(() {
-          results = _filterIdentitySearchResults(metas);
+          results = identityResults;
           isSearching = false;
         });
         if (results.isEmpty) {
