@@ -2869,6 +2869,54 @@ class StremioService {
     return deduped;
   }
 
+  /// Resolve subtitle identity using configured addons first, then Cinemeta.
+  /// IPTV entries may have only a playlist title and no IMDb ID. If configured
+  /// addons cannot provide an IMDb-backed result, use Cinemeta metadata search.
+  Future<List<StremioMeta>> searchIdentityCatalogs(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return const [];
+    List<StremioMeta> configured = const [];
+    try {
+      configured = await searchCatalogs(trimmed);
+    } catch (error) {
+      debugPrint('StremioService: configured identity search failed: ' + error.runtimeType.toString());
+    }
+    final configuredImdb = configured.where((meta) {
+      final id = meta.effectiveImdbId;
+      return id != null && id.startsWith('tt') && id.length >= 9 && int.tryParse(id.substring(2)) != null;
+    }).toList(growable: false);
+    if (configuredImdb.isNotEmpty) return configuredImdb;
+    final encoded = Uri.encodeComponent(trimmed);
+    final results = await Future.wait([
+      _searchCinemetaIdentityCatalog('movie', encoded),
+      _searchCinemetaIdentityCatalog('series', encoded),
+    ]);
+    final unique = <String, StremioMeta>{};
+    for (final list in results) {
+      for (final meta in list) {
+        final id = meta.effectiveImdbId;
+        if (id == null || !id.startsWith('tt') || id.length < 9 || int.tryParse(id.substring(2)) == null) continue;
+        unique[meta.type + ':' + id] = meta;
+      }
+    }
+    return unique.values.toList(growable: false);
+  }
+
+  Future<List<StremioMeta>> _searchCinemetaIdentityCatalog(String type, String encodedQuery) async {
+    try {
+      final uri = Uri.parse('https://v3-cinemeta.strem.io/catalog/' + type + '/top/search=' + encodedQuery + '.json');
+      final response = await http.get(uri).timeout(_requestTimeout);
+      if (response.statusCode != 200) return const [];
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return const [];
+      final metas = decoded['metas'];
+      if (metas is! List) return const [];
+      return metas.whereType<Map<String, dynamic>>().map(StremioMeta.fromJson).where((meta) => meta.id.isNotEmpty).toList(growable: false);
+    } catch (error) {
+      debugPrint('StremioService: Cinemeta identity fallback failed type=' + type + ' error=' + error.runtimeType.toString());
+      return const [];
+    }
+  }
   /// Search across all catalogs that support search
   ///
   /// Returns deduplicated results by ID, keeping the best metadata.
