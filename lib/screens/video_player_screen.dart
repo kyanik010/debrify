@@ -15989,7 +15989,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       });
 
       try {
-        final metas = await StremioService.instance.searchCatalogs(query);
+        final metas = await StremioService.instance.searchIdentityCatalogs(query);
         if (!sheetActive || !mounted || token != searchToken) return;
         setSheetState(() {
           results = _filterIdentitySearchResults(metas);
