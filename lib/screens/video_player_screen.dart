@@ -15978,6 +15978,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       });
 
       try {
+        // Preserve the original catalog search path for subtitle identity lookup.
         final metas = await StremioService.instance.searchCatalogs(query);
         if (!sheetActive || !mounted || token != searchToken) return;
         setSheetState(() {
