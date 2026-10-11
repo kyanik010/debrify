@@ -54,6 +54,7 @@ import '../services/movie_metadata_service.dart';
 import '../models/iptv_playlist.dart';
 import '../services/stremio_iptv_service.dart';
 import '../services/iptv_epg_service.dart';
+import '../services/iptv_source_search.dart';
 import '../models/playlist_view_mode.dart';
 import '../models/series_playlist.dart';
 import '../services/torbox_service.dart';
@@ -8622,6 +8623,35 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     int attempt = 1,
     int maxAttempts = 1,
   }) async {
+    // IPTV playlist URLs are already direct panel/M3U URLs. Keep their native
+    // open path: many IPTV VOD endpoints do not expose a reliable decoded
+    // position/dimension signal during startup, so the generic source gate can
+    // reject playable movies and leave the player stopped. Debrid/Stremio
+    // sources continue through the normal startup validation below.
+    if (source != null && IptvSourceSearch.owns(source)) {
+      final stopwatch = Stopwatch()..start();
+      final sourceFields = _startupSourceFields(sourceIndex, source);
+      try {
+        await _openMedia(
+          mk.Media(url, httpHeaders: httpHeaders),
+          play: true,
+        );
+        debugPrint(
+          '[StartupFailover] event=candidate_result platform=flutter '
+          '$sourceFields ok=true reason=iptv_direct_open '
+          'elapsedMs=${stopwatch.elapsedMilliseconds}',
+        );
+        return true;
+      } catch (error) {
+        debugPrint(
+          '[StartupFailover] event=open_exception platform=flutter '
+          '$sourceFields exception=${error.runtimeType} '
+          'reason=iptv_direct_open',
+        );
+        return false;
+      }
+    }
+
     final stopwatch = Stopwatch()..start();
     final completer = Completer<bool>();
     var armed = false;
