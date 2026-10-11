@@ -8623,10 +8623,34 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     int attempt = 1,
     int maxAttempts = 1,
   }) async {
-    // IPTV VOD must pass the same startup validation as other direct sources.
-    // The gate below already permits IPTV VOD to commit when decoder dimensions
-    // arrive, even if its position clock has not advanced; merely completing
-    // player.open() is not proof that the URL is playable.
+    // IPTV playlist URLs are already direct panel/M3U URLs. Keep their native
+    // open path: many IPTV VOD endpoints do not expose a reliable decoded
+    // position/dimension signal during startup, so the generic source gate can
+    // reject playable movies and leave the player stopped. Debrid/Stremio
+    // sources continue through the normal startup validation below.
+    if (source != null && IptvSourceSearch.owns(source)) {
+      final stopwatch = Stopwatch()..start();
+      final sourceFields = _startupSourceFields(sourceIndex, source);
+      try {
+        await _openMedia(
+          mk.Media(url, httpHeaders: httpHeaders),
+          play: true,
+        );
+        debugPrint(
+          '[StartupFailover] event=candidate_result platform=flutter '
+          '$sourceFields ok=true reason=iptv_direct_open '
+          'elapsedMs=${stopwatch.elapsedMilliseconds}',
+        );
+        return true;
+      } catch (error) {
+        debugPrint(
+          '[StartupFailover] event=open_exception platform=flutter '
+          '$sourceFields exception=${error.runtimeType} '
+          'reason=iptv_direct_open',
+        );
+        return false;
+      }
+    }
 
     final stopwatch = Stopwatch()..start();
     final completer = Completer<bool>();
