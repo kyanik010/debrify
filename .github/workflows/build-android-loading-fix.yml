@@ -2,7 +2,7 @@ name: Build Android APK - IPTV Loading Fix
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/subtitle-imdb-title-search]
   workflow_dispatch:
 
 permissions:
