@@ -2875,22 +2875,416 @@ class StremioService {
   Future<List<StremioMeta>> searchIdentityCatalogs(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
-
     List<StremioMeta> configured = const [];
     try {
       configured = await searchCatalogs(trimmed);
     } catch (error) {
-      debugPrint(
-        'StremioService: configured identity search failed error=' +
-        error.runtimeType.toString() + '; trying Cinemeta fallback',
-      );
+      debugPrint('StremioService: configured identity search failed: ' + error.runtimeType.toString());
     }
     final configuredImdb = configured.where((meta) {
       final id = meta.effectiveImdbId;
-      return id != null && RegExp(r'^tt[0-9]+$').hasMatch(id);
+      return id != null && RegExp(r'^tt[0-9]+  ///
+  /// Returns deduplicated results by ID, keeping the best metadata.
+  /// Supports all content types: movies, series, TV channels, anime, etc.
+  Future<List<StremioMeta>> searchCatalogs(String query) async {
+    if (query.trim().isEmpty) return [];
+
+    final encodedQuery = Uri.encodeComponent(query.trim());
+    // getSearchableAddons (not getCatalogAddons) so this path queries the same
+    // addon set as the Search tab — including search-only addons whose
+    // manifest omits 'catalog' from `resources`.
+    final catalogAddons = await getSearchableAddons();
+
+    if (catalogAddons.isEmpty) {
+      debugPrint('StremioService: No searchable addons found');
+      return [];
+    }
+
+    // Collect all (addon, catalog) pairs that support search
+    // Search ALL addons, not just IMDB ones - supports TV channels, anime, etc.
+    final searchableCatalogs =
+        <({StremioAddon addon, StremioAddonCatalog catalog})>[];
+    for (final addon in catalogAddons) {
+      for (final catalog in addon.catalogs) {
+        if (catalog.supportsSearch) {
+          searchableCatalogs.add((addon: addon, catalog: catalog));
+        }
+      }
+    }
+
+    if (searchableCatalogs.isEmpty) {
+      debugPrint('StremioService: No catalogs support search');
+      return [];
+    }
+
+    debugPrint(
+      'StremioService: Searching ${searchableCatalogs.length} catalogs for "$query"',
+    );
+
+    // Search catalogs with bounded concurrency (order preserved so the dedup
+    // loop below can still map allResults[i] back to searchableCatalogs[i]).
+    // Capping the fan-out avoids exhausting sockets/memory on weak hardware
+    // (e.g. TVs) when many addons are installed.
+    final allResults = await mapWithConcurrency(
+      searchableCatalogs,
+      (entry) => _searchSingleCatalog(entry.addon, entry.catalog, encodedQuery),
+    );
+
+    // Flatten and deduplicate by ID (supports any ID format - IMDB, TV channels, etc.)
+    final Map<String, StremioMeta> uniqueResults = {};
+
+    for (int i = 0; i < allResults.length; i++) {
+      final addon = searchableCatalogs[i].addon;
+      for (final meta in allResults[i]) {
+        // Skip results without valid ID
+        if (meta.id.isEmpty) continue;
+
+        // Tag with source addon (prefer addon that supports meta for series drill-down)
+        final tagged = meta.sourceAddon == null
+            ? meta.withSourceAddon(addon)
+            : meta;
+
+        final existing = uniqueResults[meta.id];
+        if (existing == null) {
+          uniqueResults[meta.id] = tagged;
+        } else {
+          // Keep the one with better metadata (prefer one with poster and rating)
+          final existingScore = _metadataScore(existing);
+          final newScore = _metadataScore(tagged);
+          if (newScore > existingScore) {
+            final taggedSource = tagged.sourceAddon;
+            final existingSource = existing.sourceAddon;
+            final bestAddon =
+                taggedSource ??
+                ((!addon.supportsMeta && existingSource?.supportsMeta == true)
+                    ? existingSource!
+                    : addon);
+            uniqueResults[meta.id] = tagged.sourceAddon == bestAddon
+                ? tagged
+                : tagged.withSourceAddon(bestAddon);
+          } else if (existing.sourceAddon != null &&
+              !existing.sourceAddon!.supportsMeta &&
+              addon.supportsMeta) {
+            // Keep existing metadata but upgrade to addon that supports meta
+            uniqueResults[meta.id] = existing.withSourceAddon(addon);
+          }
+        }
+      }
+    }
+
+    final results = uniqueResults.values.toList();
+    debugPrint(
+      'StremioService: Catalog search returned ${results.length} unique results',
+    );
+
+    return results;
+  }
+
+  /// Search a single catalog
+  /// Public per-catalog search — lets callers group results per catalog (e.g.
+  /// separate Movie / Series rows) instead of merging them like
+  /// [searchAddonCatalogs]. Returns [] for a non-searchable catalog.
+  ///
+  /// With [throwOnError] a failed request (non-200 / timeout / network error)
+  /// throws instead of collapsing to [] — so callers can tell "no results"
+  /// apart from "source failed" and surface it.
+  Future<List<StremioMeta>> searchSingleCatalog(
+    StremioAddon addon,
+    StremioAddonCatalog catalog,
+    String query, {
+    int skip = 0,
+    String? genre,
+    bool throwOnError = false,
+    void Function(int rawCount)? onRawCount,
+  }) async {
+    if (query.trim().isEmpty || !catalog.supportsSearch) return [];
+    final results = await _searchSingleCatalog(
+      addon,
+      catalog,
+      Uri.encodeComponent(query.trim()),
+      skip: skip,
+      genre: genre,
+      throwOnError: throwOnError,
+      onRawCount: onRawCount,
+    );
+    // Tag with the originating addon, matching fetchCatalog — so a searched
+    // title carries its source (for the "source" label + episode-meta addon
+    // resolution) exactly like a browsed one. Scoped to this per-catalog path;
+    // the merged searchAddonCatalogs does its own best-addon tagging.
+    return results
+        .map((m) => m.sourceAddon == null ? m.withSourceAddon(addon) : m)
+        .toList();
+  }
+
+  Future<List<StremioMeta>> _searchSingleCatalog(
+    StremioAddon addon,
+    StremioAddonCatalog catalog,
+    String encodedQuery, {
+    int skip = 0,
+    String? genre,
+    bool throwOnError = false,
+    void Function(int rawCount)? onRawCount,
+  }) async {
+    // Build search URL: {baseUrl}/catalog/{type}/{id}/search={query}.json
+    // With genre/paging: /search={query}&genre={g}&skip={n}.json (addons that
+    // don't support paged search just re-return page 1, which the caller dedups
+    // → stop).
+    final extraParts = <String>['search=$encodedQuery'];
+    if (genre != null && genre.isNotEmpty) {
+      extraParts.add('genre=${Uri.encodeComponent(genre)}');
+    }
+    if (skip > 0) extraParts.add('skip=$skip');
+    final url = buildStremioResourceUri(addon.baseUrl, <String>[
+      'catalog',
+      catalog.type,
+      Uri.encodeComponent(catalog.id),
+      '${extraParts.join("&")}.json',
+    ]).toString();
+
+    debugPrint(
+      'StremioService: Searching catalog ${addon.name}/${catalog.name}',
+    );
+
+    try {
+      final client = http.Client();
+      try {
+        final request = http.Request('GET', Uri.parse(url));
+        request.followRedirects = true;
+        request.maxRedirects = 5;
+
+        final streamedResponse = await client
+            .send(request)
+            .timeout(_requestTimeout);
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode != 200) {
+          debugPrint(
+            'StremioService: ${addon.name}/${catalog.name} search failed: HTTP ${response.statusCode}',
+          );
+          if (throwOnError) {
+            throw http.ClientException(
+              'HTTP ${response.statusCode}',
+              Uri.parse(url),
+            );
+          }
+          return [];
+        }
+
+        final Map<String, dynamic> data = await decodeJsonAsync(response.body);
+        final metasRaw = data['metas'] as List<dynamic>?;
+        onRawCount?.call(metasRaw?.length ?? 0);
+
+        if (metasRaw == null || metasRaw.isEmpty) {
+          return [];
+        }
+
+        // Keep all items with valid ID (not just IMDB) - supports TV channels, etc.
+        final metas = metasRaw
+            .map((m) => StremioMeta.fromJson(m as Map<String, dynamic>))
+            .where((m) => m.hasValidId)
+            .toList();
+
+        debugPrint(
+          'StremioService: ${addon.name}/${catalog.name} returned ${metas.length} results',
+        );
+
+        return metas;
+      } finally {
+        client.close();
+      }
+    } catch (_) {
+      debugPrint('StremioService: Catalog search failed');
+      if (throwOnError) rethrow;
+      return [];
+    }
+  }
+
+  /// Calculate metadata quality score (higher = better)
+  int _metadataScore(StremioMeta meta) {
+    int score = 0;
+    if (meta.poster != null) score += 2;
+    if (meta.imdbRating != null) score += 2;
+    if (meta.year != null) score += 1;
+    if (meta.description != null) score += 1;
+    return score;
+  }
+
+  // ============================================================
+  // Validation Methods
+  // ============================================================
+
+  String _normalizeManifestUrl(String manifestUrl) {
+    return normalizeStremioManifestUri(manifestUrl).toString();
+  }
+
+  String _normalizeImportedTransportUrl(String transportUrl) {
+    transportUrl = transportUrl.trim();
+
+    if (transportUrl.startsWith('stremio://')) {
+      transportUrl = 'https://${transportUrl.substring('stremio://'.length)}';
+    }
+
+    while (transportUrl.length > 1 && transportUrl.endsWith('/')) {
+      final candidate = transportUrl.substring(0, transportUrl.length - 1);
+      final uri = Uri.tryParse(candidate);
+      if (uri != null && uri.hasScheme && uri.host.isEmpty) break;
+      transportUrl = candidate;
+    }
+
+    return transportUrl;
+  }
+
+  bool _isLocalTransportUrl(String transportUrl) {
+    try {
+      final uri = Uri.parse(transportUrl);
+      final host = uri.host.toLowerCase();
+      return host == 'localhost' ||
+          host == '127.0.0.1' ||
+          host == '::1' ||
+          host.startsWith('127.');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Set<String> _duplicateUrlVariants(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return const {};
+
+    try {
+      final manifest = normalizeStremioManifestUri(trimmed);
+      final base = stremioBaseUriFromManifest(manifest.toString());
+      final baseWithSlash = base.replace(
+        path: base.path.endsWith('/') ? base.path : '${base.path}/',
+      );
+      return <String>{
+        trimmed,
+        manifest.toString(),
+        base.toString(),
+        baseWithSlash.toString(),
+      };
+    } on FormatException {
+      // Preserve the previous best-effort behavior for malformed imported
+      // values; validation will report the useful error later.
+      return <String>{trimmed};
+    }
+  }
+
+  List<dynamic> _extractAddonDescriptors(dynamic decoded) {
+    if (decoded is List) return decoded;
+
+    if (decoded is Map) {
+      final map = Map<String, dynamic>.from(decoded);
+
+      final addons = map['addons'];
+      if (addons is List) return addons;
+
+      final result = map['result'];
+      if (result is Map) {
+        final resultAddons = result['addons'];
+        if (resultAddons is List) return resultAddons;
+      }
+
+      final collection = map['addonCollection'] ?? map['addon_collection'];
+      if (collection is Map) {
+        final collectionAddons = collection['addons'];
+        if (collectionAddons is List) return collectionAddons;
+      }
+    }
+
+    return const [];
+  }
+
+  String _addonDisplayNameFromDescriptor(Map<String, dynamic> descriptor) {
+    final rawManifest = descriptor['manifest'];
+    if (rawManifest is Map) {
+      final name = rawManifest['name'];
+      if (name is String && name.trim().isNotEmpty) return name.trim();
+
+      final id = rawManifest['id'];
+      if (id is String && id.trim().isNotEmpty) return id.trim();
+    }
+
+    final url =
+        descriptor['transportUrl'] ??
+        descriptor['transport_url'] ??
+        descriptor['manifestUrl'] ??
+        descriptor['manifest_url'];
+    if (url is String && url.trim().isNotEmpty) return url.trim();
+
+    return 'Unknown addon';
+  }
+
+  /// Validate that an addon has useful resources
+  ///
+  /// Returns null if valid, or an error message if invalid.
+  /// Accepts any addon that provides streams, catalogs, or subtitles.
+  String? _validateAddon(StremioAddon addon) {
+    final hasStreams = addon.supportsStreams;
+    final hasCatalogs = addon.supportsCatalogs;
+    final hasSubtitles = addon.resources.contains('subtitles');
+
+    // Must have at least one useful resource
+    if (!hasStreams && !hasCatalogs && !hasSubtitles) {
+      return 'This addon doesn\'t provide streams, catalogs, or subtitles. '
+          'Debrify requires addons with stream, catalog, or subtitle support.';
+    }
+
+    return null; // Valid
+  }
+
+  // ============================================================
+  // Utility Methods
+  // ============================================================
+
+  /// Check if any addons are configured
+  Future<bool> hasAddons() async {
+    final addons = await getAddons(forSettings: true);
+    return addons.isNotEmpty;
+  }
+
+  /// Check if any enabled addons are available
+  Future<bool> hasEnabledAddons() async {
+    final addons = await getEnabledAddons();
+    return addons.isNotEmpty;
+  }
+
+  /// Get count of enabled addons
+  Future<int> getEnabledAddonCount() async {
+    final addons = await getEnabledAddons();
+    return addons.length;
+  }
+
+  /// Replay local addon notifications after an external registry commit.
+  void refreshAfterExternalChange() {
+    invalidateCache();
+    _recommendationsCache.clear();
+    _metaDetailsCache.clear();
+    _nonRecommendationAddonIds.clear();
+    for (final listener in List<VoidCallback>.of(_addonsChangedListeners)) {
+      try {
+        listener();
+      } catch (_) {
+        // A stale UI listener must not prevent other views from refreshing.
+      }
+    }
+  }
+
+  /// Invalidate cache (call after external changes)
+  void invalidateCache() {
+    HomeReturnCache.invalidate();
+    _addonsCache = null;
+    _catalogCache.clear();
+    _streamRequests.clear();
+    for (final idle in _idleStreamClients) {
+      idle.close();
+    }
+    _idleStreamClients.clear();
+  }
+}
+).hasMatch(id);
     }).toList(growable: false);
     if (configuredImdb.isNotEmpty) return configuredImdb;
-
     final encoded = Uri.encodeComponent(trimmed);
     final results = await Future.wait([
       _searchCinemetaIdentityCatalog('movie', encoded),
@@ -2900,38 +3294,424 @@ class StremioService {
     for (final list in results) {
       for (final meta in list) {
         final id = meta.effectiveImdbId;
-        if (id == null || !RegExp(r'^tt[0-9]+$').hasMatch(id)) continue;
+        if (id == null || !RegExp(r'^tt[0-9]+  ///
+  /// Returns deduplicated results by ID, keeping the best metadata.
+  /// Supports all content types: movies, series, TV channels, anime, etc.
+  Future<List<StremioMeta>> searchCatalogs(String query) async {
+    if (query.trim().isEmpty) return [];
+
+    final encodedQuery = Uri.encodeComponent(query.trim());
+    // getSearchableAddons (not getCatalogAddons) so this path queries the same
+    // addon set as the Search tab — including search-only addons whose
+    // manifest omits 'catalog' from `resources`.
+    final catalogAddons = await getSearchableAddons();
+
+    if (catalogAddons.isEmpty) {
+      debugPrint('StremioService: No searchable addons found');
+      return [];
+    }
+
+    // Collect all (addon, catalog) pairs that support search
+    // Search ALL addons, not just IMDB ones - supports TV channels, anime, etc.
+    final searchableCatalogs =
+        <({StremioAddon addon, StremioAddonCatalog catalog})>[];
+    for (final addon in catalogAddons) {
+      for (final catalog in addon.catalogs) {
+        if (catalog.supportsSearch) {
+          searchableCatalogs.add((addon: addon, catalog: catalog));
+        }
+      }
+    }
+
+    if (searchableCatalogs.isEmpty) {
+      debugPrint('StremioService: No catalogs support search');
+      return [];
+    }
+
+    debugPrint(
+      'StremioService: Searching ${searchableCatalogs.length} catalogs for "$query"',
+    );
+
+    // Search catalogs with bounded concurrency (order preserved so the dedup
+    // loop below can still map allResults[i] back to searchableCatalogs[i]).
+    // Capping the fan-out avoids exhausting sockets/memory on weak hardware
+    // (e.g. TVs) when many addons are installed.
+    final allResults = await mapWithConcurrency(
+      searchableCatalogs,
+      (entry) => _searchSingleCatalog(entry.addon, entry.catalog, encodedQuery),
+    );
+
+    // Flatten and deduplicate by ID (supports any ID format - IMDB, TV channels, etc.)
+    final Map<String, StremioMeta> uniqueResults = {};
+
+    for (int i = 0; i < allResults.length; i++) {
+      final addon = searchableCatalogs[i].addon;
+      for (final meta in allResults[i]) {
+        // Skip results without valid ID
+        if (meta.id.isEmpty) continue;
+
+        // Tag with source addon (prefer addon that supports meta for series drill-down)
+        final tagged = meta.sourceAddon == null
+            ? meta.withSourceAddon(addon)
+            : meta;
+
+        final existing = uniqueResults[meta.id];
+        if (existing == null) {
+          uniqueResults[meta.id] = tagged;
+        } else {
+          // Keep the one with better metadata (prefer one with poster and rating)
+          final existingScore = _metadataScore(existing);
+          final newScore = _metadataScore(tagged);
+          if (newScore > existingScore) {
+            final taggedSource = tagged.sourceAddon;
+            final existingSource = existing.sourceAddon;
+            final bestAddon =
+                taggedSource ??
+                ((!addon.supportsMeta && existingSource?.supportsMeta == true)
+                    ? existingSource!
+                    : addon);
+            uniqueResults[meta.id] = tagged.sourceAddon == bestAddon
+                ? tagged
+                : tagged.withSourceAddon(bestAddon);
+          } else if (existing.sourceAddon != null &&
+              !existing.sourceAddon!.supportsMeta &&
+              addon.supportsMeta) {
+            // Keep existing metadata but upgrade to addon that supports meta
+            uniqueResults[meta.id] = existing.withSourceAddon(addon);
+          }
+        }
+      }
+    }
+
+    final results = uniqueResults.values.toList();
+    debugPrint(
+      'StremioService: Catalog search returned ${results.length} unique results',
+    );
+
+    return results;
+  }
+
+  /// Search a single catalog
+  /// Public per-catalog search — lets callers group results per catalog (e.g.
+  /// separate Movie / Series rows) instead of merging them like
+  /// [searchAddonCatalogs]. Returns [] for a non-searchable catalog.
+  ///
+  /// With [throwOnError] a failed request (non-200 / timeout / network error)
+  /// throws instead of collapsing to [] — so callers can tell "no results"
+  /// apart from "source failed" and surface it.
+  Future<List<StremioMeta>> searchSingleCatalog(
+    StremioAddon addon,
+    StremioAddonCatalog catalog,
+    String query, {
+    int skip = 0,
+    String? genre,
+    bool throwOnError = false,
+    void Function(int rawCount)? onRawCount,
+  }) async {
+    if (query.trim().isEmpty || !catalog.supportsSearch) return [];
+    final results = await _searchSingleCatalog(
+      addon,
+      catalog,
+      Uri.encodeComponent(query.trim()),
+      skip: skip,
+      genre: genre,
+      throwOnError: throwOnError,
+      onRawCount: onRawCount,
+    );
+    // Tag with the originating addon, matching fetchCatalog — so a searched
+    // title carries its source (for the "source" label + episode-meta addon
+    // resolution) exactly like a browsed one. Scoped to this per-catalog path;
+    // the merged searchAddonCatalogs does its own best-addon tagging.
+    return results
+        .map((m) => m.sourceAddon == null ? m.withSourceAddon(addon) : m)
+        .toList();
+  }
+
+  Future<List<StremioMeta>> _searchSingleCatalog(
+    StremioAddon addon,
+    StremioAddonCatalog catalog,
+    String encodedQuery, {
+    int skip = 0,
+    String? genre,
+    bool throwOnError = false,
+    void Function(int rawCount)? onRawCount,
+  }) async {
+    // Build search URL: {baseUrl}/catalog/{type}/{id}/search={query}.json
+    // With genre/paging: /search={query}&genre={g}&skip={n}.json (addons that
+    // don't support paged search just re-return page 1, which the caller dedups
+    // → stop).
+    final extraParts = <String>['search=$encodedQuery'];
+    if (genre != null && genre.isNotEmpty) {
+      extraParts.add('genre=${Uri.encodeComponent(genre)}');
+    }
+    if (skip > 0) extraParts.add('skip=$skip');
+    final url = buildStremioResourceUri(addon.baseUrl, <String>[
+      'catalog',
+      catalog.type,
+      Uri.encodeComponent(catalog.id),
+      '${extraParts.join("&")}.json',
+    ]).toString();
+
+    debugPrint(
+      'StremioService: Searching catalog ${addon.name}/${catalog.name}',
+    );
+
+    try {
+      final client = http.Client();
+      try {
+        final request = http.Request('GET', Uri.parse(url));
+        request.followRedirects = true;
+        request.maxRedirects = 5;
+
+        final streamedResponse = await client
+            .send(request)
+            .timeout(_requestTimeout);
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode != 200) {
+          debugPrint(
+            'StremioService: ${addon.name}/${catalog.name} search failed: HTTP ${response.statusCode}',
+          );
+          if (throwOnError) {
+            throw http.ClientException(
+              'HTTP ${response.statusCode}',
+              Uri.parse(url),
+            );
+          }
+          return [];
+        }
+
+        final Map<String, dynamic> data = await decodeJsonAsync(response.body);
+        final metasRaw = data['metas'] as List<dynamic>?;
+        onRawCount?.call(metasRaw?.length ?? 0);
+
+        if (metasRaw == null || metasRaw.isEmpty) {
+          return [];
+        }
+
+        // Keep all items with valid ID (not just IMDB) - supports TV channels, etc.
+        final metas = metasRaw
+            .map((m) => StremioMeta.fromJson(m as Map<String, dynamic>))
+            .where((m) => m.hasValidId)
+            .toList();
+
+        debugPrint(
+          'StremioService: ${addon.name}/${catalog.name} returned ${metas.length} results',
+        );
+
+        return metas;
+      } finally {
+        client.close();
+      }
+    } catch (_) {
+      debugPrint('StremioService: Catalog search failed');
+      if (throwOnError) rethrow;
+      return [];
+    }
+  }
+
+  /// Calculate metadata quality score (higher = better)
+  int _metadataScore(StremioMeta meta) {
+    int score = 0;
+    if (meta.poster != null) score += 2;
+    if (meta.imdbRating != null) score += 2;
+    if (meta.year != null) score += 1;
+    if (meta.description != null) score += 1;
+    return score;
+  }
+
+  // ============================================================
+  // Validation Methods
+  // ============================================================
+
+  String _normalizeManifestUrl(String manifestUrl) {
+    return normalizeStremioManifestUri(manifestUrl).toString();
+  }
+
+  String _normalizeImportedTransportUrl(String transportUrl) {
+    transportUrl = transportUrl.trim();
+
+    if (transportUrl.startsWith('stremio://')) {
+      transportUrl = 'https://${transportUrl.substring('stremio://'.length)}';
+    }
+
+    while (transportUrl.length > 1 && transportUrl.endsWith('/')) {
+      final candidate = transportUrl.substring(0, transportUrl.length - 1);
+      final uri = Uri.tryParse(candidate);
+      if (uri != null && uri.hasScheme && uri.host.isEmpty) break;
+      transportUrl = candidate;
+    }
+
+    return transportUrl;
+  }
+
+  bool _isLocalTransportUrl(String transportUrl) {
+    try {
+      final uri = Uri.parse(transportUrl);
+      final host = uri.host.toLowerCase();
+      return host == 'localhost' ||
+          host == '127.0.0.1' ||
+          host == '::1' ||
+          host.startsWith('127.');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Set<String> _duplicateUrlVariants(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return const {};
+
+    try {
+      final manifest = normalizeStremioManifestUri(trimmed);
+      final base = stremioBaseUriFromManifest(manifest.toString());
+      final baseWithSlash = base.replace(
+        path: base.path.endsWith('/') ? base.path : '${base.path}/',
+      );
+      return <String>{
+        trimmed,
+        manifest.toString(),
+        base.toString(),
+        baseWithSlash.toString(),
+      };
+    } on FormatException {
+      // Preserve the previous best-effort behavior for malformed imported
+      // values; validation will report the useful error later.
+      return <String>{trimmed};
+    }
+  }
+
+  List<dynamic> _extractAddonDescriptors(dynamic decoded) {
+    if (decoded is List) return decoded;
+
+    if (decoded is Map) {
+      final map = Map<String, dynamic>.from(decoded);
+
+      final addons = map['addons'];
+      if (addons is List) return addons;
+
+      final result = map['result'];
+      if (result is Map) {
+        final resultAddons = result['addons'];
+        if (resultAddons is List) return resultAddons;
+      }
+
+      final collection = map['addonCollection'] ?? map['addon_collection'];
+      if (collection is Map) {
+        final collectionAddons = collection['addons'];
+        if (collectionAddons is List) return collectionAddons;
+      }
+    }
+
+    return const [];
+  }
+
+  String _addonDisplayNameFromDescriptor(Map<String, dynamic> descriptor) {
+    final rawManifest = descriptor['manifest'];
+    if (rawManifest is Map) {
+      final name = rawManifest['name'];
+      if (name is String && name.trim().isNotEmpty) return name.trim();
+
+      final id = rawManifest['id'];
+      if (id is String && id.trim().isNotEmpty) return id.trim();
+    }
+
+    final url =
+        descriptor['transportUrl'] ??
+        descriptor['transport_url'] ??
+        descriptor['manifestUrl'] ??
+        descriptor['manifest_url'];
+    if (url is String && url.trim().isNotEmpty) return url.trim();
+
+    return 'Unknown addon';
+  }
+
+  /// Validate that an addon has useful resources
+  ///
+  /// Returns null if valid, or an error message if invalid.
+  /// Accepts any addon that provides streams, catalogs, or subtitles.
+  String? _validateAddon(StremioAddon addon) {
+    final hasStreams = addon.supportsStreams;
+    final hasCatalogs = addon.supportsCatalogs;
+    final hasSubtitles = addon.resources.contains('subtitles');
+
+    // Must have at least one useful resource
+    if (!hasStreams && !hasCatalogs && !hasSubtitles) {
+      return 'This addon doesn\'t provide streams, catalogs, or subtitles. '
+          'Debrify requires addons with stream, catalog, or subtitle support.';
+    }
+
+    return null; // Valid
+  }
+
+  // ============================================================
+  // Utility Methods
+  // ============================================================
+
+  /// Check if any addons are configured
+  Future<bool> hasAddons() async {
+    final addons = await getAddons(forSettings: true);
+    return addons.isNotEmpty;
+  }
+
+  /// Check if any enabled addons are available
+  Future<bool> hasEnabledAddons() async {
+    final addons = await getEnabledAddons();
+    return addons.isNotEmpty;
+  }
+
+  /// Get count of enabled addons
+  Future<int> getEnabledAddonCount() async {
+    final addons = await getEnabledAddons();
+    return addons.length;
+  }
+
+  /// Replay local addon notifications after an external registry commit.
+  void refreshAfterExternalChange() {
+    invalidateCache();
+    _recommendationsCache.clear();
+    _metaDetailsCache.clear();
+    _nonRecommendationAddonIds.clear();
+    for (final listener in List<VoidCallback>.of(_addonsChangedListeners)) {
+      try {
+        listener();
+      } catch (_) {
+        // A stale UI listener must not prevent other views from refreshing.
+      }
+    }
+  }
+
+  /// Invalidate cache (call after external changes)
+  void invalidateCache() {
+    HomeReturnCache.invalidate();
+    _addonsCache = null;
+    _catalogCache.clear();
+    _streamRequests.clear();
+    for (final idle in _idleStreamClients) {
+      idle.close();
+    }
+    _idleStreamClients.clear();
+  }
+}
+).hasMatch(id)) continue;
         unique[meta.type + ':' + id] = meta;
       }
     }
     return unique.values.toList(growable: false);
   }
 
-  Future<List<StremioMeta>> _searchCinemetaIdentityCatalog(
-    String type,
-    String encodedQuery,
-  ) async {
+  Future<List<StremioMeta>> _searchCinemetaIdentityCatalog(String type, String encodedQuery) async {
     try {
-      final uri = Uri.parse(
-        'https://v3-cinemeta.strem.io/catalog/' +
-        type + '/top/search=' + encodedQuery + '.json',
-      );
+      final uri = Uri.parse('https://v3-cinemeta.strem.io/catalog/' + type + '/top/search=' + encodedQuery + '.json');
       final response = await http.get(uri).timeout(_requestTimeout);
       if (response.statusCode != 200) return const [];
       final decoded = jsonDecode(response.body);
       if (decoded is! Map<String, dynamic>) return const [];
       final metas = decoded['metas'];
       if (metas is! List) return const [];
-      return metas
-          .whereType<Map<String, dynamic>>()
-          .map(StremioMeta.fromJson)
-          .where((meta) => meta.id.isNotEmpty)
-          .toList(growable: false);
+      return metas.whereType<Map<String, dynamic>>().map(StremioMeta.fromJson).where((meta) => meta.id.isNotEmpty).toList(growable: false);
     } catch (error) {
-      debugPrint(
-        'StremioService: Cinemeta identity fallback failed type=' +
-        type + ' error=' + error.runtimeType.toString(),
-      );
+      debugPrint('StremioService: Cinemeta identity fallback failed type=' + type + ' error=' + error.runtimeType.toString());
       return const [];
     }
   }
