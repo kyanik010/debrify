@@ -534,6 +534,9 @@ class StremioAddon {
 
   /// Human-readable name from manifest
   final String name;
+
+  /// Subtitle-facing label for this addon.
+  String get displayName => name;
   final String? logo;
 
   /// The full manifest URL (includes any configuration)
