@@ -397,6 +397,7 @@ Future<void> _launchEpisode(
       title: _episodeDisplayName(series.name, target),
       subtitle: series.name,
       viewMode: PlaylistViewMode.sorted,
+      contentType: 'series',
       iptvChannels: channels,
       iptvStartIndex: index,
       httpHeaders: channels[index].playbackHeaders,
