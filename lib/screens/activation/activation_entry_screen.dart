@@ -34,6 +34,8 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
   bool _pageReady = false;
   bool _checking = false;
   bool _activated = false;
+  bool _pageFailed = false;
+  String _pageError = 'تعذر تحميل شاشة التفعيل';
 
   @override
   void initState() {
@@ -51,9 +53,17 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
       )
       ..setNavigationDelegate(
         NavigationDelegate(
+          onWebResourceError: (error) {
+            if (error.isForMainFrame == false || !mounted) return;
+            setState(() {
+              _pageFailed = true;
+              _pageError = 'تعذر تحميل شاشة التفعيل (${error.errorCode})';
+            });
+          },
           onPageFinished: (_) async {
             if (!mounted || _pageReady) return;
             _pageReady = true;
+            if (mounted) setState(() => _pageFailed = false);
             await _setPageState('pending', 'بانتظار التحقق من حالة التفعيل');
             if (mounted) await _refreshActivation();
           },
@@ -67,8 +77,11 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
     if (!mounted) return;
     try {
       await _controller.loadFlutterAsset('assets/eagle-x2-design-v4.html');
-    } catch (_) {
-      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) setState(() {
+        _pageFailed = true;
+        _pageError = 'فشل فتح صفحة التفعيل: $error';
+      });
     }
   }
 
@@ -239,22 +252,39 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
     await StorageService.setIptvDefaultPlaylist(_managedPlaylistId);
   }
 
+  Future<void> _retryPageLoad() async {
+    if (!mounted) return;
+    setState(() { _pageFailed = false; _pageReady = false; });
+    try {
+      await _controller.loadFlutterAsset('assets/eagle-x2-design-v4.html');
+    } catch (error) {
+      if (mounted) setState(() { _pageFailed = true; _pageError = 'فشل فتح صفحة التفعيل: $error'; });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_activated) return widget.activatedBuilder(context);
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A),
-      body: _deviceId.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFE6C982),
-                strokeWidth: 2.5,
-              ),
-            )
-          : WebViewWidget(controller: _controller),
+      body: _deviceId.isEmpty || (!_pageReady && !_pageFailed)
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFE6C982), strokeWidth: 2.5))
+          : _pageFailed
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.error_outline, color: Color(0xFFE6C982), size: 42),
+                    const SizedBox(height: 12),
+                    const Text('تعذر عرض شاشة التفعيل', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text(_pageError, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 18),
+                    ElevatedButton(onPressed: _retryPageLoad, child: const Text('إعادة المحاولة')),
+                  ]),
+                ))
+              : WebViewWidget(controller: _controller),
     );
   }
-
   @override
   void dispose() {
     super.dispose();
