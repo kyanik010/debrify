@@ -21,12 +21,15 @@ import '../main.dart';
 const Duration _kSpinnerFade = Duration(milliseconds: 170);
 
 class AppInitializer extends StatefulWidget {
-  const AppInitializer({super.key, this.homeBuilder});
+  const AppInitializer({super.key, this.homeBuilder, this.skipOnboarding = false});
 
   /// Allows startup handoff tests to control Home readiness without starting
   /// network, media and database services inside a widget test.
   @visibleForTesting
   final WidgetBuilder? homeBuilder;
+
+  /// Activation flow owns its entry/onboarding and must not show legacy setup.
+  final bool skipOnboarding;
 
   @override
   State<AppInitializer> createState() => _AppInitializerState();
@@ -214,11 +217,17 @@ class _AppInitializerState extends State<AppInitializer>
     // with a moved scope is a device that just received a configured profile
     // graph. A wrong guess costs one trip through Home, not a dead screen.
     bool hasCompleted;
-    try {
-      hasCompleted = await StorageService.isInitialSetupComplete();
-    } catch (e) {
-      debugPrint('AppInitializer: onboarding state unavailable — $e');
+    if (widget.skipOnboarding) {
+      // ActivationEntryScreen is the onboarding surface for managed IPTV.
+      // Still run migrations above, but never open the legacy setup flow here.
       hasCompleted = true;
+    } else {
+      try {
+        hasCompleted = await StorageService.isInitialSetupComplete();
+      } catch (e) {
+        debugPrint('AppInitializer: onboarding state unavailable — $e');
+        hasCompleted = true;
+      }
     }
 
     if (!mounted) return;
