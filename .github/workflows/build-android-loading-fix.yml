@@ -57,31 +57,28 @@ jobs:
           distribution: zulu
           java-version: "21"
 
-      - name: Create temporary release signing key
+      - name: Restore release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          test -n "$KEYSTORE_BASE64" || { echo "Missing secret KEYSTORE_BASE64"; exit 1; }
+          test -n "$STORE_PASSWORD" || { echo "Missing secret STORE_PASSWORD"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "Missing secret KEY_PASSWORD"; exit 1; }
           rm -f android/app/release.keystore
-          keytool -genkeypair -v \
-            -keystore android/app/release.keystore \
-            -storepass debrifytest \
-            -keypass debrifytest \
-            -alias debrify \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 3650 \
-            -dname "CN=Debrify Test, OU=Android, O=Debrify, L=Unknown, ST=Unknown, C=US"
-
-      - name: Create key.properties
-        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
           cat > android/key.properties << EOF
-          storePassword=debrifytest
-          keyPassword=debrifytest
-          keyAlias=debrify
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=upload
           storeFile=release.keystore
           EOF
+
       - name: Build release APK
         env:
           ORG_GRADLE_PROJECT_debrifyLocalDiagnostics: "false"
-        run: flutter build apk --release --target-platform android-arm64 --dart-define=DEBRIFY_LOCAL_VALIDATION=false
+        run: flutter build apk --release --target-platform android-arm64 --build-number=$((1000 + GITHUB_RUN_NUMBER)) --dart-define=DEBRIFY_LOCAL_VALIDATION=false
 
       - name: Verify APK is non-debuggable
         run: |
