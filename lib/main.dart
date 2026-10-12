@@ -75,6 +75,7 @@ import 'services/simkl/simkl_service.dart';
 import 'services/trakt/trakt_service.dart';
 import 'services/mdblist/mdblist_service.dart';
 import 'screens/activation/activation_entry_screen.dart';
+import 'widgets/app_initializer.dart';
 
 import 'widgets/animated_background.dart';
 import 'services/main_page_bridge.dart';
@@ -1255,7 +1256,7 @@ class _DebrifyAppState extends State<DebrifyApp> {
 Widget _buildActivatedIptvApp(BuildContext context) {
   return const ProfileGate(
     bypassPicker: true,
-    child: MainPage(),
+    child: AppInitializer(skipOnboarding: true),
   );
 }
 
