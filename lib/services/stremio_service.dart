@@ -714,7 +714,8 @@ class StremioService {
         ? <StremioAddon>[]
         : await getAddonsForManagement();
     final knownUrlVariants = <String>{
-      for (final addon in addons) ..._duplicateUrlVariants(addon.manifestUrl),
+      for (final addon in addons)
+        if (addon.manifestUrl != null) ..._duplicateUrlVariants(addon.manifestUrl!),
     };
 
     var imported = 0;
@@ -2890,7 +2891,7 @@ class StremioService {
     }).toList(growable: false);
     if (configuredImdb.isNotEmpty) return configuredImdb;
     final encoded = Uri.encodeComponent(trimmed);
-    final results = await Future.wait([
+    final results = await Future.wait<List<StremioMeta>>([
       _searchCinemetaIdentityCatalog('movie', encoded),
       _searchCinemetaIdentityCatalog('series', encoded),
     ]);
