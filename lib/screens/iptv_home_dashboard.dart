@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'addons_screen.dart';
+import 'stremio_tv/stremio_tv_screen.dart';
 import '../models/iptv_playlist.dart';
 import '../services/iptv_catalog_db.dart';
 import '../services/iptv_catalog_key.dart';
@@ -150,6 +152,8 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
       posterSection('أحدث الأفلام', movies, 'vod', height: 150),
       const SizedBox(height: 12),
       for (final s in sections) ...[card(s), const SizedBox(height: 9)],
+      SizedBox(height: 58, child: extrasRow()),
+      const SizedBox(height: 9),
       footer(),
     ]),
   );
@@ -192,6 +196,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                           child: card(s, compact: true),
                         ),
                       ),
+                    SizedBox(height: 40, child: extrasRow(compact: true)),
                   ],
                 ),
               ),
@@ -423,6 +428,39 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     _Section('settings', 'الإعدادات', 'إعدادات التطبيق ومصادر IPTV', Icons.settings_rounded, Color(0xFF9CA3AF)),
   ];
 
+  static const extras = <_Section>[
+    _Section('stremio_tv', 'Stremio TV', 'قنوات عشوائية', Icons.play_circle_fill_rounded, Color(0xFFF59E0B)),
+    _Section('addons', 'الإضافات', 'الترجمة والمصادر', Icons.extension_rounded, Color(0xFFEC4899)),
+  ];
+
+  void _openExtra(String id) {
+    final Widget page = id == 'addons'
+        ? const AddonsScreen()
+        : const StremioTvScreen();
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => Scaffold(
+        backgroundColor: bg,
+        appBar: AppBar(
+          backgroundColor: bg,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          toolbarHeight: 44,
+        ),
+        body: page,
+      ),
+    ));
+  }
+
+  Widget extrasRow({bool compact = false}) => Row(
+    textDirection: TextDirection.rtl,
+    children: [
+      for (var i = 0; i < extras.length; i++) ...[
+        if (i > 0) const SizedBox(width: 8),
+        Expanded(child: extraTile(extras[i], compact: compact)),
+      ],
+    ],
+  );
+
   Widget card(_Section s, {bool compact = false}) => Material(
     color: surface,
     borderRadius: BorderRadius.circular(15),
@@ -505,6 +543,79 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                 Icons.chevron_left_rounded,
                 size: compact ? 12 : 15,
                 color: muted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget extraTile(_Section s, {bool compact = false}) => Material(
+    color: surface,
+    borderRadius: BorderRadius.circular(15),
+    child: InkWell(
+      onTap: () => _openExtra(s.id),
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 10 : 14,
+          vertical: compact ? 4 : 10,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: blue.withOpacity(.16)),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    s.title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: compact ? 12 : 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    s.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: muted,
+                      fontSize: compact ? 8 : 10,
+                      height: compact ? 1 : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: compact ? 28 : 34,
+              height: compact ? 28 : 34,
+              decoration: BoxDecoration(
+                color: s.color.withOpacity(.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: s.color.withOpacity(.35)),
+              ),
+              child: Icon(
+                s.icon,
+                color: s.color,
+                size: compact ? 12 : 15,
               ),
             ),
           ],
