@@ -8628,9 +8628,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // position/dimension signal during startup, so the generic source gate can
     // reject playable movies and leave the player stopped. Debrid/Stremio
     // sources continue through the normal startup validation below.
-    if (source != null && IptvSourceSearch.owns(source)) {
+    final isIptvChannelVod = _currentIptvChannel?.contentType == 'vod';
+    final isKnownIptvSource =
+        source != null && IptvSourceSearch.owns(source);
+    if (isKnownIptvSource || isIptvChannelVod) {
       final stopwatch = Stopwatch()..start();
       final sourceFields = _startupSourceFields(sourceIndex, source);
+      final openReason = isKnownIptvSource
+          ? 'iptv_direct_open'
+          : 'iptv_channel_direct_open';
       try {
         await _openMedia(
           mk.Media(url, httpHeaders: httpHeaders),
@@ -8638,7 +8644,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         );
         debugPrint(
           '[StartupFailover] event=candidate_result platform=flutter '
-          '$sourceFields ok=true reason=iptv_direct_open '
+          '$sourceFields ok=true reason=$openReason '
           'elapsedMs=${stopwatch.elapsedMilliseconds}',
         );
         return true;
@@ -8646,7 +8652,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         debugPrint(
           '[StartupFailover] event=open_exception platform=flutter '
           '$sourceFields exception=${error.runtimeType} '
-          'reason=iptv_direct_open',
+          'reason=$openReason',
         );
         return false;
       }
