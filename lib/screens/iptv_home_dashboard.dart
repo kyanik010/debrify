@@ -498,7 +498,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: compact ? 12 : 14,
+                      fontSize: compact ? 18 : 14,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -509,16 +509,16 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: muted,
-                      fontSize: compact ? 8 : 10,
-                      height: compact ? 1 : null,
+                      fontSize: compact ? 12 : 10,
+                      height: compact ? 1.1 : null,
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              width: compact ? 28 : 34,
-              height: compact ? 28 : 34,
+              width: compact ? 40 : 34,
+              height: compact ? 40 : 34,
               decoration: BoxDecoration(
                 color: s.color.withOpacity(.15),
                 borderRadius: BorderRadius.circular(10),
@@ -527,13 +527,13 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
               child: Icon(
                 s.icon,
                 color: s.color,
-                size: compact ? 12 : 15,
+                size: compact ? 22 : 15,
               ),
             ),
             const SizedBox(width: 10),
             Container(
-              width: compact ? 18 : 24,
-              height: compact ? 18 : 24,
+              width: compact ? 28 : 24,
+              height: compact ? 28 : 24,
               decoration: BoxDecoration(
                 color: blue.withOpacity(.1),
                 shape: BoxShape.circle,
@@ -541,7 +541,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
               ),
               child: Icon(
                 Icons.chevron_left_rounded,
-                size: compact ? 12 : 15,
+                size: compact ? 18 : 15,
                 color: muted,
               ),
             ),
@@ -586,7 +586,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: compact ? 12 : 14,
+                      fontSize: compact ? 18 : 14,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -597,16 +597,16 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: muted,
-                      fontSize: compact ? 8 : 10,
-                      height: compact ? 1 : null,
+                      fontSize: compact ? 12 : 10,
+                      height: compact ? 1.1 : null,
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              width: compact ? 28 : 34,
-              height: compact ? 28 : 34,
+              width: compact ? 40 : 34,
+              height: compact ? 40 : 34,
               decoration: BoxDecoration(
                 color: s.color.withOpacity(.15),
                 borderRadius: BorderRadius.circular(10),
@@ -615,7 +615,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
               child: Icon(
                 s.icon,
                 color: s.color,
-                size: compact ? 12 : 15,
+                size: compact ? 22 : 15,
               ),
             ),
           ],
