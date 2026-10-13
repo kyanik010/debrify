@@ -403,6 +403,8 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                             return SizedBox(
                               width: height == null ? 112 : 96,
                               child: InkWell(
+                                focusColor: blue.withOpacity(.28),
+                                hoverColor: blue.withOpacity(.16),
                                 onTap: () => widget.onOpenSection(target),
                                 borderRadius: BorderRadius.circular(10),
                                 child: Column(
@@ -487,6 +489,8 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     color: surface,
     borderRadius: BorderRadius.circular(15),
     child: InkWell(
+      focusColor: blue.withOpacity(.28),
+      hoverColor: blue.withOpacity(.16),
       onTap: () => widget.onOpenSection(s.id),
       borderRadius: BorderRadius.circular(15),
       child: Container(
@@ -577,6 +581,8 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     color: surface,
     borderRadius: BorderRadius.circular(15),
     child: InkWell(
+      focusColor: blue.withOpacity(.28),
+      hoverColor: blue.withOpacity(.16),
       onTap: () => _openExtra(s.id),
       borderRadius: BorderRadius.circular(15),
       child: Container(
