@@ -24,6 +24,13 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
 
   bool _posterLoadInFlight = false;
   Timer? _posterRefreshTimer;
+  final FocusNode _tvEntryFocusNode = FocusNode(
+    debugLabel: 'iptv-dashboard-entry',
+  );
+
+  void _focusTvEntry() {
+    if (mounted) _tvEntryFocusNode.requestFocus();
+  }
 
   Future<void> loadPosters() async {
     if (_posterLoadInFlight) return;
@@ -120,6 +127,11 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   void initState() {
     super.initState();
     MainPageBridge.homeBoardReady.value = true;
+    // Return focus to the dashboard when the TV sidebar hands control back.
+    MainPageBridge.registerTvContentFocusHandler(
+      MainTab.iptv,
+      _focusTvEntry,
+    );
     unawaited(loadPosters());
     // IPTV catalog sync writes to the local database independently of this
     // dashboard's lifecycle. Re-read cached rows periodically so posters that
@@ -133,16 +145,26 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   @override
   void dispose() {
     _posterRefreshTimer?.cancel();
+    MainPageBridge.unregisterTvContentFocusHandler(
+      MainTab.iptv,
+      _focusTvEntry,
+    );
+    _tvEntryFocusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: bg,
-    body: SafeArea(child: LayoutBuilder(builder: (context, box) {
-      final landscape = box.maxWidth > box.maxHeight;
-      return landscape ? landscapeBody() : portraitBody();
-    })),
+    body: SafeArea(
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: LayoutBuilder(builder: (context, box) {
+          final landscape = box.maxWidth > box.maxHeight;
+          return landscape ? landscapeBody() : portraitBody();
+        }),
+      ),
+    ),
   );
 
   Widget portraitBody() => SingleChildScrollView(
@@ -282,7 +304,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
           const SizedBox(height: 6),
           Text(featured?.name ?? (loading ? 'جارٍ تحميل محتوى الاشتراك…' : 'لا توجد أفلام متاحة في الكتالوج'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          OutlinedButton.icon(onPressed: () => widget.onOpenSection('vod'), icon: const Icon(Icons.play_arrow_rounded, size: 16), label: const Text('شاهد الآن'),
+          OutlinedButton.icon(focusNode: _tvEntryFocusNode, onPressed: () => widget.onOpenSection('vod'), icon: const Icon(Icons.play_arrow_rounded, size: 16), label: const Text('شاهد الآن'),
             style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: blue.withOpacity(.6)), backgroundColor: blue.withOpacity(.18), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
         ])),
       ]),
