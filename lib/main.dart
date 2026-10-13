@@ -3321,7 +3321,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
                 // runs full-bleed and the capsule floats over it.
                 final desktopPill =
                     isDesktopWide && _desktopSidebarStyle == 'pill';
-                final desktopSidebarWidth = desktopPill
+                final desktopSidebarWidth = (desktopPill || eagleIptvSurface)
                     ? 0.0
                     : expandDesktopSidebar
                     ? DesktopSidebarNav.expandedWidth
@@ -3410,7 +3410,7 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
                             // under 'pill' there is no rail, so the content
                             // must take the inset back (iPad landscape
                             // notch) or the first column sits under it.
-                            left: !isDesktopWide || desktopPill,
+                            left: !isDesktopWide || desktopPill || eagleIptvSurface,
                             child: Stack(
                               children: [
                                 // Page fills the whole area so its own
