@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [arabic-localization-full]
   push:
-    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-onboarding-flow]
+    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-onboarding-flow, feature/eagle-x-tv]
   workflow_dispatch:
 
 permissions:
@@ -78,12 +78,22 @@ jobs:
       - name: Build release APK
         env:
           ORG_GRADLE_PROJECT_debrifyLocalDiagnostics: "false"
-        run: flutter build apk --release --target-platform android-arm64 --build-number=$((1000 + GITHUB_RUN_NUMBER)) --dart-define=DEBRIFY_LOCAL_VALIDATION=false
+        run: flutter build apk --release --build-number=$((1000 + GITHUB_RUN_NUMBER)) --dart-define=DEBRIFY_LOCAL_VALIDATION=false
 
       - name: Verify APK is non-debuggable
         run: |
           debuggable=$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest debuggable build/app/outputs/flutter-apk/app-release.apk)
           test "$debuggable" = "false"
+
+      - name: Verify Flutter engine and app code exist for every ABI
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          unzip -l "$APK" | grep -E 'lib/[^/]+/(libflutter|libapp)\.so'
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            for lib in libflutter.so libapp.so; do
+              unzip -l "$APK" | grep -q "lib/$abi/$lib" || { echo "Missing lib/$abi/$lib"; exit 1; }
+            done
+          done
 
       - name: Verify APK structure, alignment, and signature
         run: |
