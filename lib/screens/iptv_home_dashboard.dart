@@ -498,7 +498,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: compact ? 18 : 14,
+                      fontSize: compact ? 26 : 14,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -509,8 +509,8 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: muted,
-                      fontSize: compact ? 12 : 10,
-                      height: compact ? 1.1 : null,
+                      fontSize: compact ? 17 : 10,
+                      height: compact ? 1.15 : null,
                     ),
                   ),
                 ],
@@ -527,7 +527,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
               child: Icon(
                 s.icon,
                 color: s.color,
-                size: compact ? 22 : 15,
+                size: compact ? 28 : 15,
               ),
             ),
             const SizedBox(width: 10),
@@ -586,7 +586,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: compact ? 18 : 14,
+                      fontSize: compact ? 26 : 14,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -597,8 +597,8 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: muted,
-                      fontSize: compact ? 12 : 10,
-                      height: compact ? 1.1 : null,
+                      fontSize: compact ? 17 : 10,
+                      height: compact ? 1.15 : null,
                     ),
                   ),
                 ],
@@ -615,7 +615,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
               child: Icon(
                 s.icon,
                 color: s.color,
-                size: compact ? 22 : 15,
+                size: compact ? 28 : 15,
               ),
             ),
           ],
