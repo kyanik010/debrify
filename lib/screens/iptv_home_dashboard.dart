@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'addons_screen.dart';
 import 'stremio_tv/stremio_tv_screen.dart';
 import '../models/iptv_playlist.dart';
