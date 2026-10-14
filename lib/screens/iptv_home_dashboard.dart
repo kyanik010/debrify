@@ -164,6 +164,9 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
       // if there is no next target, leave the event unhandled so the app shell
       // can move focus back to its TV sidebar.
       child: Focus(
+        // This is an event-routing parent, not a focusable dashboard item.
+        // Keep the actual focused card/button as the origin of DPAD movement.
+        canRequestFocus: false,
         onKeyEvent: (node, event) {
           if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
             return KeyEventResult.ignored;
@@ -176,7 +179,8 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
             _ => null,
           };
           if (direction == null) return KeyEventResult.ignored;
-          final moved = node.focusInDirection(direction);
+          final focused = FocusScope.of(context).focusedChild;
+          final moved = focused?.focusInDirection(direction) ?? false;
           return moved ? KeyEventResult.handled : KeyEventResult.ignored;
         },
         child: FocusTraversalGroup(
