@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [arabic-localization-full]
   push:
-    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-onboarding-flow, feature/eagle-x-tv]
+    branches: [main, arabic-localization-full, feature/iptv-only-ui-redesign, feature/iptv-onboarding-flow, feature/eagle-x-tv, feature/eagle-x-dpad-remote]
   workflow_dispatch:
 
 permissions:
