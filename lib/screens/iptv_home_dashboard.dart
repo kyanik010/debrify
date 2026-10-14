@@ -157,12 +157,34 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: bg,
     body: SafeArea(
-      child: FocusTraversalGroup(
-        policy: ReadingOrderTraversalPolicy(),
-        child: LayoutBuilder(builder: (context, box) {
-          final landscape = box.maxWidth > box.maxHeight;
-          return landscape ? landscapeBody() : portraitBody();
-        }),
+      // Some Android TV remotes deliver DPAD events without triggering
+      // Flutter's default directional traversal inside nested scroll views.
+      // Route the four directions through the active FocusScope explicitly;
+      // if there is no next target, leave the event unhandled so the app shell
+      // can move focus back to its TV sidebar.
+      child: Focus(
+        onKeyEvent: (context, event) {
+          if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+            return KeyEventResult.ignored;
+          }
+          final direction = switch (event.logicalKey) {
+            LogicalKeyboardKey.arrowUp => TraversalDirection.up,
+            LogicalKeyboardKey.arrowDown => TraversalDirection.down,
+            LogicalKeyboardKey.arrowLeft => TraversalDirection.left,
+            LogicalKeyboardKey.arrowRight => TraversalDirection.right,
+            _ => null,
+          };
+          if (direction == null) return KeyEventResult.ignored;
+          final moved = FocusScope.of(context).focusInDirection(direction);
+          return moved ? KeyEventResult.handled : KeyEventResult.ignored;
+        },
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: LayoutBuilder(builder: (context, box) {
+            final landscape = box.maxWidth > box.maxHeight;
+            return landscape ? landscapeBody() : portraitBody();
+          }),
+        ),
       ),
     ),
   );
