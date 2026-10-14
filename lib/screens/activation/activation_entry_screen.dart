@@ -302,31 +302,24 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
     if (_activated) return widget.activatedBuilder(context);
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A),
-      body: _deviceId.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFE6C982),
-                strokeWidth: 2.5,
-              ),
-            )
-          : Focus(
-              autofocus: true,
-              onKeyEvent: (node, event) {
-                if (event is! KeyDownEvent) return KeyEventResult.ignored;
-                final key = event.logicalKey;
-                if (key == LogicalKeyboardKey.select ||
-                    key == LogicalKeyboardKey.enter ||
-                    key == LogicalKeyboardKey.numpadEnter ||
-                    key == LogicalKeyboardKey.gameButtonA) {
-                  _controller.runJavaScript(
-                    "document.getElementById('check-activation')?.click();",
-                  );
-                  return KeyEventResult.handled;
-                }
-                return KeyEventResult.ignored;
-              },
-              child: WebViewWidget(controller: _controller),
-            ),
+      body: Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          final key = event.logicalKey;
+          if (key == LogicalKeyboardKey.select ||
+              key == LogicalKeyboardKey.enter ||
+              key == LogicalKeyboardKey.numpadEnter ||
+              key == LogicalKeyboardKey.gameButtonA) {
+            _controller.runJavaScript(
+              "document.getElementById('check-activation')?.click();",
+            );
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: WebViewWidget(controller: _controller),
+      ),
     );
   }
 
