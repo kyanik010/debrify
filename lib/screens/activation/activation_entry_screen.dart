@@ -185,7 +185,7 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
         'تعذر الاتصال للتحقق من التفعيل؛ حاول مرة أخرى',
       );
     } finally {
-      _checking = false;
+      if (mounted) setState(() => _checking = false);
     }
   }
 
@@ -388,10 +388,8 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
                             style: const TextStyle(color: muted,
                                 fontSize: 13.5, height: 1.8)),
                           const SizedBox(height: 18),
-                          Focus(
-                            autofocus: true,
-                            child: Builder(
-                              builder: (buttonContext) => FilledButton(
+                          FilledButton(
+                                autofocus: true,
                                 onPressed: _checking || _deviceId.isEmpty
                                     ? null
                                     : _refreshActivation,
@@ -420,8 +418,6 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
                                     : const Text('تحقق من التفعيل',
                                         style: TextStyle(fontSize: 15,
                                             fontWeight: FontWeight.w700)),
-                              ),
-                            ),
                           ),
                         ],
                       ),
