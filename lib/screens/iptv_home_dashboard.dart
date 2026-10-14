@@ -537,10 +537,35 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
     ],
   );
 
-  Widget card(_Section s, {bool compact = false}) => Material(
+  Widget card(_Section s, {bool compact = false}) => FocusableActionDetector(
+    actions: <Type, Action<Intent>>{
+      ActivateIntent: CallbackAction<ActivateIntent>(
+        onInvoke: (_) {
+          widget.onOpenSection(s.id);
+          return null;
+        },
+      ),
+    },
+    builder: (context, states, child) {
+      final focused = states.contains(WidgetState.focused);
+      return Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: focused ? blue.withOpacity(.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(
+            color: focused ? const Color(0xFF93C5FD) : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: child,
+      );
+    },
+    child: Material(
     color: surface,
     borderRadius: BorderRadius.circular(15),
     child: InkWell(
+      canRequestFocus: false,
       focusColor: blue.withOpacity(.28),
       hoverColor: blue.withOpacity(.16),
       onTap: () => widget.onOpenSection(s.id),
@@ -626,6 +651,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
           ],
         ),
       ),
+    ),
     ),
   );
 
