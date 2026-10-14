@@ -304,7 +304,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
           const SizedBox(height: 6),
           Text(featured?.name ?? (loading ? 'جارٍ تحميل محتوى الاشتراك…' : 'لا توجد أفلام متاحة في الكتالوج'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          OutlinedButton.icon(focusNode: _tvEntryFocusNode, onPressed: () => widget.onOpenSection('vod'), icon: const Icon(Icons.play_arrow_rounded, size: 16), label: const Text('شاهد الآن'),
+          OutlinedButton.icon(focusNode: _tvEntryFocusNode, autofocus: true, onPressed: () => widget.onOpenSection('vod'), icon: const Icon(Icons.play_arrow_rounded, size: 16), label: const Text('شاهد الآن'),
             style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: blue.withOpacity(.6)), backgroundColor: blue.withOpacity(.18), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
         ])),
       ]),
