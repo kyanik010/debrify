@@ -164,7 +164,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
       // if there is no next target, leave the event unhandled so the app shell
       // can move focus back to its TV sidebar.
       child: Focus(
-        onKeyEvent: (context, event) {
+        onKeyEvent: (node, event) {
           if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
             return KeyEventResult.ignored;
           }
