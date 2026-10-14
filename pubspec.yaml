@@ -28,6 +28,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # TV-first D-pad focus, directional traversal, and focus recovery.
+  dpad: ^3.0.0
 
   # Runtime Siri Remote tuning. The tvOS engine supplies the native input
   # plugin; this package exposes its thresholds to Dart and is inert elsewhere.
