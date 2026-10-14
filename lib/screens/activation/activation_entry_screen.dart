@@ -46,7 +46,11 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
         'ActivationBridge',
         onMessageReceived: (message) {
           if (message.message == 'refresh') {
-            _refreshActivation();
+            if (_deviceId.isEmpty) {
+              _initialize();
+            } else {
+              _refreshActivation();
+            }
           }
         },
       )
@@ -64,6 +68,21 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
   }
 
   Future<void> _initialize() async {
+    // Load the activation card independently of device-ID resolution. If the
+    // native Android ID bridge is temporarily unavailable, keep the QR and
+    // activation instructions visible instead of replacing the whole screen
+    // with a separate error page.
+    try {
+      await _controller.loadFlutterAsset('assets/eagle-x2-design-v4.html');
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _deviceIdError = 'تعذّر فتح واجهة التفعيل. أعد المحاولة.';
+        });
+      }
+      return;
+    }
+
     try {
       final resolvedId = await _resolveDeviceId();
       if (!mounted) return;
@@ -71,7 +90,13 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
         _deviceId = resolvedId;
         _deviceIdError = '';
       });
-      await _controller.loadFlutterAsset('assets/eagle-x2-design-v4.html');
+      if (_pageReady) {
+        await _controller.runJavaScript(
+          'window.setDeviceId(${jsonEncode(_deviceId)});'
+          'window.setActivationState("pending", "بانتظار التحقق من حالة التفعيل");',
+        );
+        await _refreshActivation();
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -79,6 +104,12 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
         _deviceIdError =
             'تعذّر قراءة معرّف الجهاز الثابت. أعد المحاولة قبل متابعة التفعيل.';
       });
+      if (_pageReady) {
+        await _controller.runJavaScript(
+          'window.setDeviceId("");'
+          'window.setActivationState("offline", ${jsonEncode(_deviceIdError)});',
+        );
+      }
     }
   }
 
@@ -269,50 +300,6 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
   @override
   Widget build(BuildContext context) {
     if (_activated) return widget.activatedBuilder(context);
-    if (_deviceIdError.isNotEmpty) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0B0F1A),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.phonelink_erase_outlined,
-                    color: Color(0xFFE6C982),
-                    size: 44,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'تعذّر تحديد معرّف الجهاز',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _deviceIdError,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFFB9C0CC)),
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton(
-                    onPressed: _initialize,
-                    child: const Text('إعادة المحاولة'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A),
       body: _deviceId.isEmpty
