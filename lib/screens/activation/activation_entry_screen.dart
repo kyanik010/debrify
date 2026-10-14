@@ -322,7 +322,24 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
                 strokeWidth: 2.5,
               ),
             )
-          : WebViewWidget(controller: _controller),
+          : Focus(
+              autofocus: true,
+              onKeyEvent: (node, event) {
+                if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                final key = event.logicalKey;
+                if (key == LogicalKeyboardKey.select ||
+                    key == LogicalKeyboardKey.enter ||
+                    key == LogicalKeyboardKey.numpadEnter ||
+                    key == LogicalKeyboardKey.gameButtonA) {
+                  _controller.runJavaScript(
+                    "document.getElementById('check-activation')?.click();",
+                  );
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: WebViewWidget(controller: _controller),
+            ),
     );
   }
 
