@@ -8,6 +8,7 @@ import 'dart:ui' show AppExitResponse, PointerDeviceKind;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dpad/dpad.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import 'utils/app_version_info.dart';
@@ -1143,23 +1144,6 @@ class _DebrifyAppState extends State<DebrifyApp> {
           );
         }
 
-        // Map the remote "OK" keycodes to widget activation app-wide.
-        // Flutter's default only maps enter/space to ActivateIntent, but TV
-        // remotes commonly send KEYCODE_DPAD_CENTER (select) or
-        // KEYCODE_BUTTON_A (gameButtonA), which otherwise leave plain
-        // Material controls (InkWell / IconButton / DropdownButton / ListTile)
-        // dead on OK. This mirrors [isActivateKey] and is purely additive —
-        // screens with their own onKeyEvent activation still take precedence
-        // (Focus.onKeyEvent runs before Shortcuts), so nothing regresses.
-        content = Shortcuts(
-          shortcuts: const <ShortcutActivator, Intent>{
-            SingleActivator(LogicalKeyboardKey.select): ActivateIntent(),
-            SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
-            SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
-          },
-          child: content,
-        );
-
         final mq = MediaQuery.of(context).copyWith(
           // TV: no text scaling at all — a 10-foot layout is already sized for
           // the room, and scaling it overflows rows.
@@ -1191,33 +1175,52 @@ class _DebrifyAppState extends State<DebrifyApp> {
         if (PlatformUtil.isTvOS) {
           const factor = 2.0;
           final scaled = Size(mq.size.width / factor, mq.size.height / factor);
-          return MediaQuery(
-            data: mq.copyWith(
-              size: scaled,
-              devicePixelRatio: mq.devicePixelRatio * factor,
-              // Drop the tvOS overscan safe area. Apple TV reports ~80pt
-              // horizontal / ~60pt vertical insets; Android TV reports none,
-              // and this UI already carries its own 10-foot margins — so
-              // honouring these too insets everything a second time and leaves
-              // the whole app floating in the middle of the panel with the
-              // backdrop showing around it. The layouts are the safe area.
-              padding: EdgeInsets.zero,
-              viewPadding: EdgeInsets.zero,
-              viewInsets: mq.viewInsets / factor,
-            ),
-            child: FittedBox(
-              fit: BoxFit.fill,
-              alignment: Alignment.topLeft,
-              child: SizedBox(
-                width: scaled.width,
-                height: scaled.height,
-                child: content,
+          return Dpad.wrap(
+            debugOverlay: kDebugMode,
+            onBack: () {
+              final navigator = _navigatorKey.currentState;
+              if (navigator == null || !navigator.canPop()) return false;
+              navigator.pop();
+              return true;
+            },
+          )(
+            context,
+            MediaQuery(
+              data: mq.copyWith(
+                size: scaled,
+                devicePixelRatio: mq.devicePixelRatio * factor,
+                // Drop the tvOS overscan safe area. Apple TV reports ~80pt
+                // horizontal / ~60pt vertical insets; Android TV reports none,
+                // and this UI already carries its own 10-foot margins — so
+                // honouring these too insets everything a second time and leaves
+                // the whole app floating in the middle of the panel with the
+                // backdrop showing around it. The layouts are the safe area.
+                padding: EdgeInsets.zero,
+                viewPadding: EdgeInsets.zero,
+                viewInsets: mq.viewInsets / factor,
+              ),
+              child: FittedBox(
+                fit: BoxFit.fill,
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: scaled.width,
+                  height: scaled.height,
+                  child: content,
+                ),
               ),
             ),
           );
         }
 
-        return MediaQuery(data: mq, child: content);
+        return Dpad.wrap(
+          debugOverlay: kDebugMode,
+          onBack: () {
+            final navigator = _navigatorKey.currentState;
+            if (navigator == null || !navigator.canPop()) return false;
+            navigator.pop();
+            return true;
+          },
+        )(context, MediaQuery(data: mq, child: content));
       },
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         // Optimize scroll physics for TV
@@ -1398,7 +1401,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
       _TvContentDirectionalFocusAction();
   late final Map<Type, Action<Intent>> _tvContentActions =
       <Type, Action<Intent>>{DirectionalFocusIntent: _tvDirectionalFocusAction};
-  bool _tvFocusRecoveryInstalled = false;
 
   // Remote control state
   bool _remoteControlEnabled = true;
@@ -1749,15 +1751,6 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
         MainPageBridge.isTvSidebarFocused = () =>
             _tvSidebarKey.currentState?.hasFocus ?? false;
         MainPageBridge.tvDirectionalLeft = _tvDirectionalFocusAction.handleLeft;
-        // The sidebar's nodes skip traversal, so if focus ever dies (a tab
-        // with nothing focusable, or the focused widget got disposed and the
-        // scope has no traversable descendants left) no DPAD press could
-        // recover it — previously a stray arrow landed on the rail. Restore
-        // that last-resort recovery explicitly.
-        if (!_tvFocusRecoveryInstalled) {
-          _tvFocusRecoveryInstalled = true;
-          HardwareKeyboard.instance.addHandler(_tvDeadFocusRecovery);
-        }
       }
 
       if (!_hasTrackedInitialTab) {
@@ -1898,73 +1891,11 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     MainPageBridge.isTvSidebarFocused = null;
     MainPageBridge.tvDirectionalLeft = null;
     MainPageBridge.hideAutoLaunchOverlay = null;
-    if (_tvFocusRecoveryInstalled) {
-      HardwareKeyboard.instance.removeHandler(_tvDeadFocusRecovery);
-    }
     _animationController.dispose();
     _tvSidebarExpanded.dispose();
     DeepLinkService().dispose();
     RemoteControlState().stop();
     super.dispose();
-  }
-
-  /// TV last-resort DPAD recovery: only when NOTHING real holds focus (primary
-  /// focus fell back to a bare scope) AND that scope has no traversable
-  /// descendants for stock traversal to recover into — i.e. the remote would
-  /// otherwise be completely dead — an arrow press focuses the sidebar. Never
-  /// fires while a widget has focus, while stock traversal has any candidate,
-  /// while the sidebar already has focus, or while another route (dialog,
-  /// player, pushed screen) covers MainPage.
-  bool _tvDeadFocusRecovery(KeyEvent event) {
-    if (event is! KeyDownEvent) return false;
-    if (!_isAndroidTv) return false;
-    final key = event.logicalKey;
-    if (key != LogicalKeyboardKey.arrowUp &&
-        key != LogicalKeyboardKey.arrowDown &&
-        key != LogicalKeyboardKey.arrowLeft &&
-        key != LogicalKeyboardKey.arrowRight) {
-      return false;
-    }
-
-    final primary = FocusManager.instance.primaryFocus;
-    if (primary is! FocusScopeNode) return false;
-
-    // Recover only when focus has fallen back to the app's content scope (or
-    // the root scope). A nested scope can be an intentional focus trap (for
-    // example, a popup or dropdown), and must not be escaped by this handler.
-    final contentScope = _tvDirectionalFocusAction.contentScope;
-    if (!identical(primary, contentScope) &&
-        !identical(primary, FocusManager.instance.rootScope)) {
-      return false;
-    }
-
-    // Check the MainPage route directly. The sidebar is deliberately absent on
-    // some full-screen IPTV/Home surfaces, so its GlobalKey may be null even
-    // though this route is active and its content still needs focus recovery.
-    final route = ModalRoute.of(context);
-    if (route != null && !route.isCurrent) return false;
-
-    final sidebar = _tvSidebarKey.currentState;
-    if (sidebar?.hasFocus ?? false) return false;
-
-    // LEFT opens the rail when it exists. When it is hidden, fall through to
-    // the active screen's content-focus handler instead of abandoning the key.
-    if (key == LogicalKeyboardKey.arrowLeft && sidebar != null) {
-      sidebar.requestFocus();
-      return true;
-    }
-
-    // A scope may have many traversable descendants while NONE currently owns
-    // primary focus. Do not confuse "candidates exist" with "focus is alive":
-    // ask the active screen to focus its real entry target first.
-    if (MainPageBridge.requestTvContentFocus()) return true;
-
-    // Screens without a content target can still recover through the rail.
-    if (sidebar != null) {
-      sidebar.requestFocus();
-      return true;
-    }
-    return false;
   }
 
   /// Initialize remote control based on device type
