@@ -1925,31 +1925,46 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
         key != LogicalKeyboardKey.arrowRight) {
       return false;
     }
+
     final primary = FocusManager.instance.primaryFocus;
     if (primary is! FocusScopeNode) return false;
-    if (primary.traversalDescendants.isNotEmpty) return false;
+
+    // Recover only when focus has fallen back to the app's content scope (or
+    // the root scope). A nested scope can be an intentional focus trap (for
+    // example, a popup or dropdown), and must not be escaped by this handler.
+    final contentScope = _tvDirectionalFocusAction.contentScope;
+    if (!identical(primary, contentScope) &&
+        !identical(primary, FocusManager.instance.rootScope)) {
+      return false;
+    }
+
+    // Check the MainPage route directly. The sidebar is deliberately absent on
+    // some full-screen IPTV/Home surfaces, so its GlobalKey may be null even
+    // though this route is active and its content still needs focus recovery.
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+
     final sidebar = _tvSidebarKey.currentState;
-    if (sidebar == null || sidebar.hasFocus) return false;
-    final ctx = _tvSidebarKey.currentContext;
-    if (ctx == null || !(ModalRoute.of(ctx)?.isCurrent ?? false)) return false;
-    // LEFT keeps the house rule — it's the ONE key that opens the rail, so a
-    // dead-focus LEFT still lands there (and stays the escape hatch on a tab
-    // with genuinely nothing focusable).
-    if (key == LogicalKeyboardKey.arrowLeft) {
+    if (sidebar?.hasFocus ?? false) return false;
+
+    // LEFT opens the rail when it exists. When it is hidden, fall through to
+    // the active screen's content-focus handler instead of abandoning the key.
+    if (key == LogicalKeyboardKey.arrowLeft && sidebar != null) {
       sidebar.requestFocus();
       return true;
     }
-    // Every other arrow prefers re-entering the active tab's content:
-    // focusing the rail EXPANDS it, so recovering there reads as "the sidebar
-    // opened by itself" — and every later auto-focus pass then declines to
-    // steal focus back off it. A tab's handler places focus on its entry
-    // element, or deliberately no-ops while the tab is still loading (nothing
-    // focusable yet); either way the arrow is spent and the tab's own arrival
-    // auto-focus lands once content exists. The rail stays the last resort
-    // for tabs that never registered a handler.
+
+    // A scope may have many traversable descendants while NONE currently owns
+    // primary focus. Do not confuse "candidates exist" with "focus is alive":
+    // ask the active screen to focus its real entry target first.
     if (MainPageBridge.requestTvContentFocus()) return true;
-    sidebar.requestFocus();
-    return true;
+
+    // Screens without a content target can still recover through the rail.
+    if (sidebar != null) {
+      sidebar.requestFocus();
+      return true;
+    }
+    return false;
   }
 
   /// Initialize remote control based on device type
