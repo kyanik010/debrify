@@ -436,47 +436,48 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                                   },
                                 ),
                               },
-                              builder: (context, states, child) {
-                                final focused = states.contains(WidgetState.focused);
-                                return Container(
-                                  width: height == null ? 112 : 96,
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: focused
-                                        ? blue.withOpacity(.14)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
+                              child: Builder(
+                                builder: (context) {
+                                  final focused = Focus.of(context).hasFocus;
+                                  return Container(
+                                    width: height == null ? 112 : 96,
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
                                       color: focused
-                                          ? const Color(0xFF93C5FD)
+                                          ? blue.withOpacity(.14)
                                           : Colors.transparent,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: child,
-                                );
-                              },
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () => widget.onOpenSection(target),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Expanded(child: image),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      item.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.right,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: focused
+                                            ? const Color(0xFF93C5FD)
+                                            : Colors.transparent,
+                                        width: 2,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => widget.onOpenSection(target),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(child: image),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            item.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.right,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             );
                           },
@@ -546,112 +547,113 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
         },
       ),
     },
-    builder: (context, states, child) {
-      final focused = states.contains(WidgetState.focused);
-      return Container(
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: focused ? blue.withOpacity(.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(
-            color: focused ? const Color(0xFF93C5FD) : Colors.transparent,
-            width: 2,
+    child: Builder(
+      builder: (context) {
+        final focused = Focus.of(context).hasFocus;
+        return Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: focused ? blue.withOpacity(.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: focused ? const Color(0xFF93C5FD) : Colors.transparent,
+              width: 2,
+            ),
           ),
-        ),
-        child: child,
-      );
-    },
-    child: Material(
-    color: surface,
-    borderRadius: BorderRadius.circular(15),
-    child: InkWell(
-      canRequestFocus: false,
-      focusColor: blue.withOpacity(.28),
-      hoverColor: blue.withOpacity(.16),
-      onTap: () => widget.onOpenSection(s.id),
-      borderRadius: BorderRadius.circular(15),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 10 : 14,
-          vertical: compact ? 4 : 10,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: blue.withOpacity(.16)),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          // With RTL, children are positioned right-to-left like the HTML:
-          // title, colored icon, then the circular arrow at the far left.
-          textDirection: TextDirection.rtl,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    s.title,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: compact ? 26 : 14,
-                      fontWeight: FontWeight.w800,
+          child: Material(
+            color: surface,
+            borderRadius: BorderRadius.circular(15),
+            child: InkWell(
+              canRequestFocus: false,
+              focusColor: blue.withOpacity(.28),
+              hoverColor: blue.withOpacity(.16),
+              onTap: () => widget.onOpenSection(s.id),
+              borderRadius: BorderRadius.circular(15),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 10 : 14,
+                  vertical: compact ? 4 : 10,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: blue.withOpacity(.16)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
                     ),
-                  ),
-                  Text(
-                    s.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: muted,
-                      fontSize: compact ? 17 : 10,
-                      height: compact ? 1.15 : null,
+                  ],
+                ),
+                child: Row(
+                  // With RTL, children are positioned right-to-left like the HTML:
+                  // title, colored icon, then the circular arrow at the far left.
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            s.title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: compact ? 26 : 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            s.subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: muted,
+                              fontSize: compact ? 17 : 10,
+                              height: compact ? 1.15 : null,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    Container(
+                      width: compact ? 40 : 34,
+                      height: compact ? 40 : 34,
+                      decoration: BoxDecoration(
+                        color: s.color.withOpacity(.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: s.color.withOpacity(.35)),
+                      ),
+                      child: Icon(
+                        s.icon,
+                        color: s.color,
+                        size: compact ? 28 : 15,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      width: compact ? 28 : 24,
+                      height: compact ? 28 : 24,
+                      decoration: BoxDecoration(
+                        color: blue.withOpacity(.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: blue.withOpacity(.2)),
+                      ),
+                      child: Icon(
+                        Icons.chevron_left_rounded,
+                        size: compact ? 18 : 15,
+                        color: muted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            Container(
-              width: compact ? 40 : 34,
-              height: compact ? 40 : 34,
-              decoration: BoxDecoration(
-                color: s.color.withOpacity(.15),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: s.color.withOpacity(.35)),
-              ),
-              child: Icon(
-                s.icon,
-                color: s.color,
-                size: compact ? 28 : 15,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              width: compact ? 28 : 24,
-              height: compact ? 28 : 24,
-              decoration: BoxDecoration(
-                color: blue.withOpacity(.1),
-                shape: BoxShape.circle,
-                border: Border.all(color: blue.withOpacity(.2)),
-              ),
-              child: Icon(
-                Icons.chevron_left_rounded,
-                size: compact ? 18 : 15,
-                color: muted,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
+          ),
+        );
+      },
     ),
   );
 
