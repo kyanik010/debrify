@@ -176,7 +176,7 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
             _ => null,
           };
           if (direction == null) return KeyEventResult.ignored;
-          final moved = FocusScope.of(context).focusInDirection(direction);
+          final moved = node.focusInDirection(direction);
           return moved ? KeyEventResult.handled : KeyEventResult.ignored;
         },
         child: FocusTraversalGroup(
