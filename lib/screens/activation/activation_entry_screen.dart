@@ -63,11 +63,42 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
   Uint8List? _logoBytes;
   Uint8List? _qrBytes;
 
+  // ---- TEMPORARY DIAGNOSTICS (remove once the remote issue is solved) ----
+  String _diagKey = 'no key received yet';
+  String _diagFocus = '-';
+  int _diagKeys = 0;
+  int _diagPointers = 0;
+
+  bool _diagKeyHandler(KeyEvent event) {
+    if (!mounted) return false;
+    final focus = FocusManager.instance.primaryFocus;
+    setState(() {
+      _diagKeys++;
+      _diagKey = event.runtimeType.toString() +
+          ' ' +
+          (event.logicalKey.debugName ?? 'unknown') +
+          ' (0x' +
+          event.logicalKey.keyId.toRadixString(16) +
+          ')';
+      _diagFocus = focus == null
+          ? 'none'
+          : (focus.debugLabel ?? focus.runtimeType.toString());
+    });
+    return false; // never consume
+  }
+
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_diagKeyHandler);
     _loadArtwork();
     _initialize();
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_diagKeyHandler);
+    super.dispose();
   }
 
   /// Reads the logo (1st image) and QR (2nd image) embedded as base64 PNGs in
@@ -538,9 +569,7 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: _pg,
-      body: _deviceId.isEmpty
+    final Widget mainContent = _deviceId.isEmpty
           ? const Center(
               child: CircularProgressIndicator(
                 color: Color(0xFFE6C982),
@@ -560,7 +589,49 @@ class _ActivationEntryScreenState extends State<ActivationEntryScreen> {
                   ),
                 ),
               ),
+            );
+
+    return Scaffold(
+      backgroundColor: _pg,
+      body: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => setState(() => _diagPointers++),
+        child: Stack(
+          children: [
+            Positioned.fill(child: mainContent),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: Container(
+                  color: const Color(0xDD000000),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      'DIAG native-ui-v2 | keys=' +
+                          _diagKeys.toString() +
+                          ' | taps=' +
+                          _diagPointers.toString() +
+                          ' | last: ' +
+                          _diagKey +
+                          ' | focus: ' +
+                          _diagFocus,
+                      style: const TextStyle(
+                        color: Color(0xFF7CFC9A),
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
+          ],
+        ),
+      ),
     );
   }
 }
