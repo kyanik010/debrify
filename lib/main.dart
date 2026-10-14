@@ -1175,7 +1175,15 @@ class _DebrifyAppState extends State<DebrifyApp> {
         if (PlatformUtil.isTvOS) {
           const factor = 2.0;
           final scaled = Size(mq.size.width / factor, mq.size.height / factor);
-          return Dpad.wrap(debugOverlay: kDebugMode)(
+          return Dpad.wrap(
+            debugOverlay: kDebugMode,
+            onBack: () {
+              final navigator = _navigatorKey.currentState;
+              if (navigator == null || !navigator.canPop()) return false;
+              navigator.pop();
+              return true;
+            },
+          )(
             context,
             MediaQuery(
               data: mq.copyWith(
@@ -1204,7 +1212,15 @@ class _DebrifyAppState extends State<DebrifyApp> {
           );
         }
 
-        return Dpad.wrap(debugOverlay: kDebugMode)(
+        return Dpad.wrap(
+            debugOverlay: kDebugMode,
+            onBack: () {
+              final navigator = _navigatorKey.currentState;
+              if (navigator == null || !navigator.canPop()) return false;
+              navigator.pop();
+              return true;
+            },
+          )(
           context,
           MediaQuery(data: mq, child: content),
         );
