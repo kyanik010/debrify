@@ -427,13 +427,38 @@ class _IptvHomeDashboardState extends State<IptvHomeDashboard> {
                                     )
                                   : fallbackPoster(),
                             );
-                            return SizedBox(
-                              width: height == null ? 112 : 96,
-                              child: InkWell(
-                                focusColor: blue.withOpacity(.28),
-                                hoverColor: blue.withOpacity(.16),
+                            return FocusableActionDetector(
+                              actions: <Type, Action<Intent>>{
+                                ActivateIntent: CallbackAction<ActivateIntent>(
+                                  onInvoke: (_) {
+                                    widget.onOpenSection(target);
+                                    return null;
+                                  },
+                                ),
+                              },
+                              builder: (context, states, child) {
+                                final focused = states.contains(WidgetState.focused);
+                                return Container(
+                                  width: height == null ? 112 : 96,
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: focused
+                                        ? blue.withOpacity(.14)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: focused
+                                          ? const Color(0xFF93C5FD)
+                                          : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: child,
+                                );
+                              },
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
                                 onTap: () => widget.onOpenSection(target),
-                                borderRadius: BorderRadius.circular(10),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
